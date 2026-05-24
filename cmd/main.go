@@ -6,7 +6,6 @@ import (
 	"embed"
 	"flag"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -19,6 +18,7 @@ import (
 	"github.com/moehoshio/nginx-request-attribution/internal/config"
 	"github.com/moehoshio/nginx-request-attribution/internal/parser"
 	"github.com/moehoshio/nginx-request-attribution/internal/storage"
+	"github.com/moehoshio/nginx-request-attribution/internal/watcher"
 )
 
 //go:embed all:static
@@ -50,12 +50,12 @@ func main() {
 		return
 	}
 
-	// Start log watcher in background
+	// Start log watchers in background
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	if cfg.Watch {
-		go watchLog(ctx, store, cfg.LogPath, cfg.Keywords)
+		startWatchers(ctx, cfg, store)
 	}
 
 	// Setup HTTP server
@@ -92,6 +92,53 @@ func main() {
 	log.Printf("Server starting on %s", cfg.ListenAddr)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("Server error: %v", err)
+	}
+}
+
+func startWatchers(ctx context.Context, cfg *config.Config, store *storage.Store) {
+	mode := cfg.InputMode
+	if mode == "" {
+		mode = "file"
+	}
+
+	switch mode {
+	case "file":
+		fw := watcher.NewFileWatcher(store, cfg.LogPath, cfg.Keywords)
+		go func() {
+			if err := fw.Watch(ctx); err != nil {
+				log.Printf("File watcher stopped: %v", err)
+			}
+		}()
+		log.Printf("File watcher started (fsnotify) on %s", cfg.LogPath)
+
+	case "syslog":
+		sr := watcher.NewSyslogReceiver(store, cfg.SyslogAddr, cfg.SyslogProto, cfg.Keywords)
+		go func() {
+			if err := sr.Listen(ctx); err != nil {
+				log.Printf("Syslog receiver stopped: %v", err)
+			}
+		}()
+		log.Printf("Syslog receiver started on %s (%s)", cfg.SyslogAddr, cfg.SyslogProto)
+
+	case "both":
+		fw := watcher.NewFileWatcher(store, cfg.LogPath, cfg.Keywords)
+		go func() {
+			if err := fw.Watch(ctx); err != nil {
+				log.Printf("File watcher stopped: %v", err)
+			}
+		}()
+		log.Printf("File watcher started (fsnotify) on %s", cfg.LogPath)
+
+		sr := watcher.NewSyslogReceiver(store, cfg.SyslogAddr, cfg.SyslogProto, cfg.Keywords)
+		go func() {
+			if err := sr.Listen(ctx); err != nil {
+				log.Printf("Syslog receiver stopped: %v", err)
+			}
+		}()
+		log.Printf("Syslog receiver started on %s (%s)", cfg.SyslogAddr, cfg.SyslogProto)
+
+	default:
+		log.Fatalf("Unknown input_mode: %s (valid: file, syslog, both)", mode)
 	}
 }
 
@@ -132,62 +179,4 @@ func importLogFile(store *storage.Store, path string, keywords []string) (int, e
 	}
 
 	return count, scanner.Err()
-}
-
-func watchLog(ctx context.Context, store *storage.Store, logPath string, keywords []string) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-
-		if err := tailFile(ctx, store, logPath, keywords); err != nil {
-			log.Printf("Log watch error: %v, retrying in 5s...", err)
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(5 * time.Second):
-			}
-		}
-	}
-}
-
-func tailFile(ctx context.Context, store *storage.Store, logPath string, keywords []string) error {
-	f, err := os.Open(logPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	// Seek to end
-	if _, err := f.Seek(0, io.SeekEnd); err != nil {
-		return err
-	}
-
-	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
-
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-			for scanner.Scan() {
-				entry, err := parser.ParseLine(scanner.Text())
-				if err != nil {
-					continue
-				}
-				if err := store.Insert(entry, keywords); err != nil {
-					log.Printf("Insert error: %v", err)
-				}
-			}
-			if scanner.Err() != nil {
-				return scanner.Err()
-			}
-		}
-	}
 }

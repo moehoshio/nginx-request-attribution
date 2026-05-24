@@ -4,5 +4,8 @@
   "listen_addr": ":8080",
   "db_path": "./data/stats.db",
   "watch": true,
-  "keywords": ["login", "admin", "api", "search"]
+  "keywords": ["login", "admin", "api", "search"],
+  "input_mode": "file",
+  "syslog_addr": ":1514",
+  "syslog_proto": "udp"
 }
