@@ -160,6 +160,8 @@ go test ./...
 go build -o nginx-req-attr ./cmd/
 ```
 
+For detailed development guidelines, testing requirements, and contribution workflow, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 MIT License
