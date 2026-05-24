@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            cc: gcc
+          - goos: linux
+            goarch: arm64
+            cc: aarch64-linux-gnu-gcc
+          - goos: darwin
+            goarch: amd64
+            cc: o64-clang
+          - goos: darwin
+            goarch: arm64
+            cc: oa64-clang
+          - goos: windows
+            goarch: amd64
+            cc: x86_64-w64-mingw32-gcc
+            ext: .exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install cross-compilers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu gcc-mingw-w64-x86-64
+
+      - name: Install macOS cross-compiler (osxcross)
+        if: matrix.goos == 'darwin'
+        run: |
+          sudo apt-get install -y clang lld libxml2-dev libz-dev
+          git clone --depth=1 https://github.com/tpoechtrager/osxcross /tmp/osxcross
+          cd /tmp/osxcross
+          wget -q -O tarballs/MacOSX14.0.sdk.tar.xz "https://github.com/joseluisq/macosx-sdks/releases/download/14.0/MacOSX14.0.sdk.tar.xz"
+          UNATTENDED=1 ./build.sh
+          echo "/tmp/osxcross/target/bin" >> $GITHUB_PATH
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "1"
+          CC: ${{ matrix.cc }}
+        run: |
+          go build -ldflags="-s -w" -o nginx-req-attr-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: nginx-req-attr-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
