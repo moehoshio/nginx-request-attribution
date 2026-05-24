@@ -100,24 +100,38 @@
             gap: 12px;
         }
 
+        .language-switcher,
         .theme-toggle {
-            width: 40px;
             height: 40px;
             border-radius: 12px;
             border: 1px solid var(--border);
             background: var(--bg-card);
             color: var(--text-primary);
+            backdrop-filter: blur(12px);
+            transition: all 0.2s ease;
+        }
+
+        .language-switcher {
+            padding: 0 12px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .language-switcher:hover,
+        .theme-toggle:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .theme-toggle {
+            width: 40px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 18px;
-            transition: all 0.2s ease;
-            backdrop-filter: blur(12px);
         }
 
         .theme-toggle:hover {
-            background: var(--bg-card-hover);
             transform: scale(1.05);
         }
 
@@ -526,7 +540,9 @@
         /* Responsive */
         @media (max-width: 768px) {
             .container { padding: 16px; }
+            .header { flex-direction: column; align-items: flex-start; }
             .header h1 { font-size: 22px; }
+            .header-actions { width: 100%; justify-content: flex-end; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
             .stat-card { padding: 16px; }
             .stat-card .value { font-size: 24px; }
@@ -553,7 +569,12 @@
         <div class="header">
             <h1>📊 Nginx Request Attribution</h1>
             <div class="header-actions">
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+                <select id="languageSwitcher" class="language-switcher" onchange="setLanguage(this.value)" data-i18n-title="language" data-i18n-aria-label="language">
+                    <option value="zh-TW">繁體中文</option>
+                    <option value="en">English</option>
+                    <option value="ja">日本語</option>
+                </select>
+                <button class="theme-toggle" onclick="toggleTheme()" data-i18n-title="toggle_theme" data-i18n-aria-label="toggle_theme">🌓</button>
             </div>
         </div>
 
@@ -561,79 +582,79 @@
 
         <div class="filters">
             <div class="filters-header" onclick="toggleFilters()">
-                <h2><span>🔍</span> 篩選條件 Filters</h2>
+                <h2><span>🔍</span> <span data-i18n="filters_title"></span></h2>
                 <span class="toggle-icon" id="filterToggleIcon">▼</span>
             </div>
             <div class="filter-body" id="filterBody">
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label>開始日期 Start</label>
+                        <label data-i18n="start_date"></label>
                         <input type="date" id="filterStart">
                     </div>
                     <div class="filter-group">
-                        <label>結束日期 End</label>
+                        <label data-i18n="end_date"></label>
                         <input type="date" id="filterEnd">
                     </div>
                     <div class="filter-group">
-                        <label>IP</label>
-                        <input type="text" id="filterIP" placeholder="e.g. 192.168">
+                        <label data-i18n="ip"></label>
+                        <input type="text" id="filterIP" data-i18n-placeholder="ip_placeholder">
                     </div>
                     <div class="filter-group">
-                        <label>路徑 Path</label>
-                        <input type="text" id="filterPath" placeholder="e.g. /api">
+                        <label data-i18n="path"></label>
+                        <input type="text" id="filterPath" data-i18n-placeholder="path_placeholder">
                     </div>
                     <div class="filter-group">
-                        <label>域名 Domain</label>
-                        <input type="text" id="filterDomain" placeholder="e.g. example.com">
+                        <label data-i18n="domain"></label>
+                        <input type="text" id="filterDomain" data-i18n-placeholder="domain_placeholder">
                     </div>
                     <div class="filter-group">
-                        <label>查詢 Query</label>
-                        <input type="text" id="filterQuery" placeholder="e.g. id=123">
+                        <label data-i18n="query"></label>
+                        <input type="text" id="filterQuery" data-i18n-placeholder="query_placeholder">
                     </div>
                     <div class="filter-group">
-                        <label>OS</label>
+                        <label data-i18n="os"></label>
                         <select id="filterOS">
-                            <option value="">全部 All</option>
+                            <option value="" data-i18n="all"></option>
                             <option value="Windows">Windows</option>
                             <option value="macOS">macOS</option>
                             <option value="Linux">Linux</option>
                             <option value="iOS">iOS</option>
                             <option value="Android">Android</option>
-                            <option value="Other">Other</option>
+                            <option value="Other" data-i18n="other"></option>
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>瀏覽器 Browser</label>
+                        <label data-i18n="browser"></label>
                         <select id="filterBrowser">
-                            <option value="">全部 All</option>
+                            <option value="" data-i18n="all"></option>
                             <option value="Chrome">Chrome</option>
                             <option value="Firefox">Firefox</option>
                             <option value="Safari">Safari</option>
                             <option value="Edge">Edge</option>
                             <option value="Opera">Opera</option>
                             <option value="Bot">Bot</option>
-                            <option value="Other">Other</option>
+                            <option value="Other" data-i18n="other"></option>
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>狀態碼 Status</label>
-                        <input type="number" id="filterStatus" placeholder="e.g. 200">
+                        <label data-i18n="status_code"></label>
+                        <input type="number" id="filterStatus" data-i18n-placeholder="status_placeholder">
                     </div>
                     <div class="filter-group">
-                        <label>關鍵詞 Keyword</label>
-                        <input type="text" id="filterKeyword" placeholder="keyword">
+                        <label data-i18n="keyword"></label>
+                        <input type="text" id="filterKeyword" data-i18n-placeholder="keyword_placeholder">
                     </div>
                     <div class="filter-actions">
-                        <button class="btn btn-primary" onclick="applyFilters()">搜尋 Search</button>
-                        <button class="btn btn-secondary" onclick="clearFilters()">清除 Clear</button>
+                        <button class="btn btn-primary" onclick="applyFilters()" data-i18n="search"></button>
+                        <button class="btn btn-secondary" onclick="clearFilters()" data-i18n="clear"></button>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="tabs">
-            <div class="tab active" data-tab="overview" onclick="switchTab('overview')">📈 總覽 Overview</div>
-            <div class="tab" data-tab="requests" onclick="switchTab('requests')">📋 請求列表 Requests</div>
+            <div class="tab active" data-tab="overview" onclick="switchTab('overview')"><span aria-hidden="true">📈</span> <span data-i18n="tab_overview"></span></div>
+            <div class="tab" data-tab="requests" onclick="switchTab('requests')"><span aria-hidden="true">📋</span> <span data-i18n="tab_requests"></span></div>
         </div>
 
         <div id="tab-overview" class="panel">
@@ -645,35 +666,256 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>時間 Time</th>
-                            <th>IP</th>
-                            <th>Method</th>
-                            <th>路徑 Path</th>
-                            <th>Query</th>
-                            <th>狀態 Status</th>
-                            <th>域名 Domain</th>
-                            <th>OS</th>
-                            <th>瀏覽器 Browser</th>
-                            <th>UA</th>
+                            <th data-i18n="time"></th>
+                            <th data-i18n="ip"></th>
+                            <th data-i18n="method"></th>
+                            <th data-i18n="path"></th>
+                            <th data-i18n="query"></th>
+                            <th data-i18n="status"></th>
+                            <th data-i18n="domain"></th>
+                            <th data-i18n="os"></th>
+                            <th data-i18n="browser"></th>
+                            <th data-i18n="ua"></th>
                         </tr>
                     </thead>
                     <tbody id="requestsBody"></tbody>
                 </table>
             </div>
             <div class="pagination">
-                <button class="btn btn-secondary" onclick="prevPage()">← 上一頁</button>
-                <span class="page-info" id="pageInfo">Page 1</span>
-                <button class="btn btn-secondary" onclick="nextPage()">下一頁 →</button>
+                <button class="btn btn-secondary" onclick="prevPage()"><span aria-hidden="true">←</span> <span data-i18n="prev_page"></span></button>
+                <span class="page-info" id="pageInfo"></span>
+                <button class="btn btn-secondary" onclick="nextPage()"><span data-i18n="next_page"></span> <span aria-hidden="true">→</span></button>
             </div>
         </div>
     </div>
 
     <script>
+        const i18n = {
+            'zh-TW': {
+                filters_title: '篩選條件',
+                start_date: '開始日期',
+                end_date: '結束日期',
+                path: '路徑',
+                domain: '域名',
+                query: '查詢',
+                browser: '瀏覽器',
+                status_code: '狀態碼',
+                keyword: '關鍵詞',
+                all: '全部',
+                search: '搜尋',
+                clear: '清除',
+                tab_overview: '總覽',
+                tab_requests: '請求列表',
+                time: '時間',
+                status: '狀態',
+                prev_page: '上一頁',
+                next_page: '下一頁',
+                total_requests: '總請求數',
+                unique_paths: '唯一路徑',
+                unique_ips: '唯一IP',
+                unique_domains: '唯一域名',
+                top_paths: '熱門路徑',
+                top_ips: '熱門IP',
+                chart_domains: '域名',
+                chart_os: '作業系統',
+                chart_browsers: '瀏覽器',
+                chart_status_codes: '狀態碼',
+                chart_keywords: '關鍵詞',
+                no_data: '暫無數據',
+                page_info: '第 {current} 頁 / 共 {total} 頁 ({count} 條)',
+                ip: 'IP',
+                os: '作業系統',
+                method: '方法',
+                ua: '使用者代理',
+                other: '其他',
+                empty_value: '(空)',
+                toggle_theme: '切換主題',
+                language: '語言',
+                ip_placeholder: '例如 192.168',
+                path_placeholder: '例如 /api',
+                domain_placeholder: '例如 example.com',
+                query_placeholder: '例如 id=123',
+                status_placeholder: '例如 200',
+                keyword_placeholder: '關鍵詞'
+            },
+            en: {
+                filters_title: 'Filters',
+                start_date: 'Start',
+                end_date: 'End',
+                path: 'Path',
+                domain: 'Domain',
+                query: 'Query',
+                browser: 'Browser',
+                status_code: 'Status Code',
+                keyword: 'Keyword',
+                all: 'All',
+                search: 'Search',
+                clear: 'Clear',
+                tab_overview: 'Overview',
+                tab_requests: 'Requests',
+                time: 'Time',
+                status: 'Status',
+                prev_page: 'Previous',
+                next_page: 'Next',
+                total_requests: 'Total Requests',
+                unique_paths: 'Unique Paths',
+                unique_ips: 'Unique IPs',
+                unique_domains: 'Unique Domains',
+                top_paths: 'Top Paths',
+                top_ips: 'Top IPs',
+                chart_domains: 'Domains',
+                chart_os: 'OS',
+                chart_browsers: 'Browsers',
+                chart_status_codes: 'Status Codes',
+                chart_keywords: 'Keywords',
+                no_data: 'No data',
+                page_info: 'Page {current} / {total} ({count} items)',
+                ip: 'IP',
+                os: 'OS',
+                method: 'Method',
+                ua: 'UA',
+                other: 'Other',
+                empty_value: '(empty)',
+                toggle_theme: 'Toggle theme',
+                language: 'Language',
+                ip_placeholder: 'e.g. 192.168',
+                path_placeholder: 'e.g. /api',
+                domain_placeholder: 'e.g. example.com',
+                query_placeholder: 'e.g. id=123',
+                status_placeholder: 'e.g. 200',
+                keyword_placeholder: 'keyword'
+            },
+            ja: {
+                filters_title: 'フィルター',
+                start_date: '開始日',
+                end_date: '終了日',
+                path: 'パス',
+                domain: 'ドメイン',
+                query: 'クエリ',
+                browser: 'ブラウザー',
+                status_code: 'ステータスコード',
+                keyword: 'キーワード',
+                all: 'すべて',
+                search: '検索',
+                clear: 'クリア',
+                tab_overview: '概要',
+                tab_requests: 'リクエスト一覧',
+                time: '時間',
+                status: 'ステータス',
+                prev_page: '前へ',
+                next_page: '次へ',
+                total_requests: '総リクエスト数',
+                unique_paths: 'ユニークパス',
+                unique_ips: 'ユニークIP',
+                unique_domains: 'ユニークドメイン',
+                top_paths: '人気パス',
+                top_ips: '人気 IP',
+                chart_domains: 'ドメイン',
+                chart_os: 'OS',
+                chart_browsers: 'ブラウザー',
+                chart_status_codes: 'ステータスコード',
+                chart_keywords: 'キーワード',
+                no_data: 'データなし',
+                page_info: '{current} / {total} ページ ({count} 件)',
+                ip: 'IP',
+                os: 'OS',
+                method: 'Method',
+                ua: 'UA',
+                other: 'その他',
+                empty_value: '(空)',
+                toggle_theme: 'テーマを切り替え',
+                language: '言語',
+                ip_placeholder: '例: 192.168',
+                path_placeholder: '例: /api',
+                domain_placeholder: '例: example.com',
+                query_placeholder: '例: id=123',
+                status_placeholder: '例: 200',
+                keyword_placeholder: 'キーワード'
+            }
+        };
+
+        let currentLang = getInitialLanguage();
         let currentPage = 1;
         const pageSize = 50;
         let totalResults = 0;
+        let lastStatsData = null;
+        let lastRequestRows = null;
+        const gradients = ['grad-1', 'grad-2', 'grad-3', 'grad-4', 'grad-5', 'grad-6', 'grad-7'];
 
-        // Theme management
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        function mapLanguage(lang) {
+            if (!lang) return null;
+            const normalized = lang.toLowerCase();
+            if (normalized.startsWith('zh')) return 'zh-TW';
+            if (normalized.startsWith('ja')) return 'ja';
+            if (normalized.startsWith('en')) return 'en';
+            return null;
+        }
+
+        function getInitialLanguage() {
+            const savedLang = localStorage.getItem('lang');
+            if (savedLang && i18n[savedLang]) return savedLang;
+            const browserLanguages = Array.isArray(navigator.languages) && navigator.languages.length
+                ? navigator.languages
+                : [navigator.language];
+            for (const lang of browserLanguages) {
+                const mapped = mapLanguage(lang);
+                if (mapped) return mapped;
+            }
+            return 'en';
+        }
+
+        function t(key, vars) {
+            const text = (i18n[currentLang] && i18n[currentLang][key]) || i18n.en[key] || key;
+            if (!vars) return text;
+            return text.replace(/\{(\w+)\}/g, function(_, name) {
+                return Object.prototype.hasOwnProperty.call(vars, name) ? vars[name] : _;
+            });
+        }
+
+        function updatePageInfo() {
+            const totalPages = Math.max(Math.ceil(totalResults / pageSize), 1);
+            document.getElementById('pageInfo').textContent = t('page_info', {
+                current: currentPage,
+                total: totalPages,
+                count: totalResults
+            });
+        }
+
+        function applyLanguage() {
+            document.documentElement.lang = currentLang;
+            document.querySelectorAll('[data-i18n]').forEach(function(el) {
+                el.textContent = t(el.dataset.i18n);
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+                el.placeholder = t(el.dataset.i18nPlaceholder);
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+                el.title = t(el.dataset.i18nTitle);
+            });
+            document.querySelectorAll('[data-i18n-aria-label]').forEach(function(el) {
+                el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+            });
+            const switcher = document.getElementById('languageSwitcher');
+            if (switcher) switcher.value = currentLang;
+            if (lastStatsData) {
+                renderStatsCards(lastStatsData);
+                renderCharts(lastStatsData);
+            }
+            if (lastRequestRows !== null) {
+                renderRequests(lastRequestRows);
+            }
+            updatePageInfo();
+        }
+
+        function setLanguage(lang) {
+            currentLang = i18n[lang] ? lang : 'en';
+            localStorage.setItem('lang', currentLang);
+            applyLanguage();
+        }
+
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -683,15 +925,6 @@
             document.querySelector('.theme-toggle').textContent = next === 'light' ? '🌙' : '☀️';
         }
 
-        (function initTheme() {
-            const saved = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', saved);
-            document.addEventListener('DOMContentLoaded', function() {
-                document.querySelector('.theme-toggle').textContent = saved === 'light' ? '🌙' : '☀️';
-            });
-        })();
-
-        // Filter toggle
         function toggleFilters() {
             const body = document.getElementById('filterBody');
             const icon = document.getElementById('filterToggleIcon');
@@ -721,12 +954,16 @@
         }
 
         function clearFilters() {
-            document.querySelectorAll('.filters input, .filters select').forEach(el => el.value = '');
+            document.querySelectorAll('.filters input, .filters select').forEach(function(el) {
+                el.value = '';
+            });
             applyFilters();
         }
 
         function switchTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(function(t) {
+                t.classList.remove('active');
+            });
             document.querySelector('[data-tab="' + tab + '"]').classList.add('active');
             document.getElementById('tab-overview').style.display = tab === 'overview' ? 'block' : 'none';
             document.getElementById('tab-requests').style.display = tab === 'requests' ? 'block' : 'none';
@@ -738,6 +975,7 @@
             try {
                 const res = await fetch('/api/stats?' + params.toString());
                 const data = await res.json();
+                lastStatsData = data;
                 renderStatsCards(data);
                 renderCharts(data);
             } catch (e) {
@@ -748,47 +986,47 @@
         function renderStatsCards(data) {
             const cards = document.getElementById('statsCards');
             const items = [
-                { icon: '📊', label: '總請求數 Total Requests', value: data.total_requests ? data.total_requests.toLocaleString() : '0' },
-                { icon: '🛤️', label: '唯一路徑 Unique Paths', value: data.top_paths ? data.top_paths.length : 0 },
-                { icon: '🌐', label: '唯一IP Unique IPs', value: data.top_ips ? data.top_ips.length : 0 },
-                { icon: '🏷️', label: '唯一域名 Domains', value: data.top_domains ? data.top_domains.length : 0 }
+                { icon: '📊', labelKey: 'total_requests', value: data.total_requests ? data.total_requests.toLocaleString(currentLang) : '0' },
+                { icon: '🛤️', labelKey: 'unique_paths', value: data.top_paths ? data.top_paths.length.toLocaleString(currentLang) : '0' },
+                { icon: '🌐', labelKey: 'unique_ips', value: data.top_ips ? data.top_ips.length.toLocaleString(currentLang) : '0' },
+                { icon: '🏷️', labelKey: 'unique_domains', value: data.top_domains ? data.top_domains.length.toLocaleString(currentLang) : '0' }
             ];
             cards.innerHTML = items.map(function(item) {
-                return '<div class="stat-card"><div class="stat-icon">' + item.icon + '</div><h3>' + item.label + '</h3><div class="value">' + item.value + '</div></div>';
+                return '<div class="stat-card"><div class="stat-icon">' + item.icon + '</div><h3>' + t(item.labelKey) + '</h3><div class="value">' + item.value + '</div></div>';
             }).join('');
         }
 
-        var gradients = ['grad-1', 'grad-2', 'grad-3', 'grad-4', 'grad-5', 'grad-6', 'grad-7'];
-
-        function renderBarChart(title, items, gradIdx) {
+        function renderBarChart(icon, titleKey, items, gradIdx) {
+            const title = icon + ' ' + t(titleKey);
             if (!items || items.length === 0) {
-                return '<div class="chart-box"><h3>' + title + '</h3><div class="empty-state"><div class="icon">📭</div><p>暫無數據 No data</p></div></div>';
+                return '<div class="chart-box"><h3>' + title + '</h3><div class="empty-state"><div class="icon">📭</div><p>' + t('no_data') + '</p></div></div>';
             }
-            var max = items[0].count;
-            var grad = gradients[gradIdx % gradients.length];
-            var bars = items.slice(0, 10).map(function(item) {
-                var pct = Math.max((item.count / max) * 100, 10);
-                return '<div class="bar-item"><span class="bar-label" title="' + escapeHtml(item.name) + '">' + escapeHtml(item.name || '(empty)') + '</span><div class="bar-track"><div class="bar-fill ' + grad + '" style="width:' + pct + '%">' + item.count.toLocaleString() + '</div></div></div>';
+            const max = items[0].count;
+            const grad = gradients[gradIdx % gradients.length];
+            const bars = items.slice(0, 10).map(function(item) {
+                const pct = Math.max((item.count / max) * 100, 10);
+                const name = item.name || t('empty_value');
+                return '<div class="bar-item"><span class="bar-label" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span><div class="bar-track"><div class="bar-fill ' + grad + '" style="width:' + pct + '%">' + item.count.toLocaleString(currentLang) + '</div></div></div>';
             }).join('');
             return '<div class="chart-box"><h3>' + title + '</h3><div class="bar-chart">' + bars + '</div></div>';
         }
 
         function escapeHtml(str) {
-            var div = document.createElement('div');
-            div.appendChild(document.createTextNode(str));
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str == null ? '' : String(str)));
             return div.innerHTML;
         }
 
         function renderCharts(data) {
-            var container = document.getElementById('charts');
+            const container = document.getElementById('charts');
             container.innerHTML =
-                renderBarChart('🛤️ 熱門路徑 Top Paths', data.top_paths, 0) +
-                renderBarChart('🌐 熱門IP Top IPs', data.top_ips, 1) +
-                renderBarChart('🏷️ 域名 Domains', data.top_domains, 2) +
-                renderBarChart('💻 作業系統 OS', data.top_os, 3) +
-                renderBarChart('🌍 瀏覽器 Browsers', data.top_browsers, 4) +
-                renderBarChart('📊 狀態碼 Status Codes', data.status_codes, 5) +
-                renderBarChart('🔑 關鍵詞 Keywords', data.top_keywords, 6);
+                renderBarChart('🛤️', 'top_paths', data.top_paths, 0) +
+                renderBarChart('🌐', 'top_ips', data.top_ips, 1) +
+                renderBarChart('🏷️', 'chart_domains', data.top_domains, 2) +
+                renderBarChart('💻', 'chart_os', data.top_os, 3) +
+                renderBarChart('🌍', 'chart_browsers', data.top_browsers, 4) +
+                renderBarChart('📊', 'chart_status_codes', data.status_codes, 5) +
+                renderBarChart('🔑', 'chart_keywords', data.top_keywords, 6);
         }
 
         function getStatusClass(status) {
@@ -799,30 +1037,30 @@
         }
 
         async function loadRequests() {
-            var params = getFilters();
+            const params = getFilters();
             params.set('limit', pageSize);
             params.set('offset', (currentPage - 1) * pageSize);
             try {
-                var res = await fetch('/api/requests?' + params.toString());
-                var data = await res.json();
-                totalResults = data.total;
-                renderRequests(data.rows);
-                document.getElementById('pageInfo').textContent =
-                    '第 ' + currentPage + ' 頁 / 共 ' + Math.ceil(totalResults / pageSize) + ' 頁 (' + totalResults + ' 條)';
+                const res = await fetch('/api/requests?' + params.toString());
+                const data = await res.json();
+                totalResults = data.total || 0;
+                lastRequestRows = data.rows || [];
+                renderRequests(lastRequestRows);
+                updatePageInfo();
             } catch (e) {
                 console.error('Failed to load requests:', e);
             }
         }
 
         function renderRequests(rows) {
-            var tbody = document.getElementById('requestsBody');
+            const tbody = document.getElementById('requestsBody');
             if (!rows || rows.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="icon">📭</div><p>暫無數據 No data</p></div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="icon">📭</div><p>' + t('no_data') + '</p></div></td></tr>';
                 return;
             }
             tbody.innerHTML = rows.map(function(r) {
                 return '<tr>' +
-                    '<td>' + new Date(r.timestamp).toLocaleString() + '</td>' +
+                    '<td>' + new Date(r.timestamp).toLocaleString(currentLang) + '</td>' +
                     '<td><code>' + escapeHtml(r.ip) + '</code></td>' +
                     '<td><strong>' + escapeHtml(r.method) + '</strong></td>' +
                     '<td title="' + escapeHtml(r.path) + '">' + escapeHtml(r.path.length > 40 ? r.path.slice(0, 40) + '…' : r.path) + '</td>' +
@@ -836,11 +1074,25 @@
             }).join('');
         }
 
-        function prevPage() { if (currentPage > 1) { currentPage--; loadRequests(); } }
-        function nextPage() { if (currentPage * pageSize < totalResults) { currentPage++; loadRequests(); } }
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadRequests();
+            }
+        }
 
-        // Initial load
-        loadStats();
+        function nextPage() {
+            if (currentPage * pageSize < totalResults) {
+                currentPage++;
+                loadRequests();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+            applyLanguage();
+            loadStats();
+        });
     </script>
 </body>
 </html>

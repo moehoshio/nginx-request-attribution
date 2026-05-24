@@ -1,47 +1,48 @@
 # Nginx Request Attribution
 
-一個輕量級的 Nginx 存取日誌分析工具，提供統計報表和即時監控功能。
+🌐 **English** | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md)
 
 A lightweight Nginx access log analytics tool with statistics dashboard and real-time monitoring.
 
-## 截圖預覽 Screenshots
+## Screenshots
 
 | Dark Mode | Light Mode |
 |:-:|:-:|
 | ![Dark Mode](docs/screenshot-dark.png) | ![Light Mode](docs/screenshot-light.png) |
 
-## 特點 Features
+## Features
 
-- 🚀 **單一二進位檔** - Go 編譯為單一可執行檔，無需額外 runtime
-- 📊 **內建 Web GUI** - 統計報表直接嵌入二進位檔中，無需額外前端部署
-- 🔍 **多維度篩選** - 支援按 IP、路徑、域名、查詢參數、OS、瀏覽器、狀態碼等篩選
-- 🔑 **關鍵詞追蹤** - 自動追蹤配置的關鍵詞出現次數
-- 📡 **即時監控** - 自動監控日誌檔案新增內容
-- 🐳 **一鍵部署** - 支援 Docker / Docker Compose 部署
-- 💾 **SQLite 儲存** - 輕量級資料庫，無需外部資料庫服務
+- 🚀 **Single Binary** - Compiled with Go into a single executable, no additional runtime needed
+- 📊 **Built-in Web GUI** - Statistics dashboard embedded in the binary, no separate frontend deployment required
+- 🔍 **Multi-dimensional Filtering** - Filter by IP, path, domain, query parameters, OS, browser, status code, etc.
+- 🔑 **Keyword Tracking** - Automatically track occurrences of configured keywords
+- 📡 **Real-time Monitoring** - Automatically monitor new log file entries
+- 🐳 **One-click Deploy** - Docker / Docker Compose deployment support
+- 💾 **SQLite Storage** - Lightweight database, no external database service required
+- 🌐 **Multilingual Interface** - Web GUI supports English, Traditional Chinese, and Japanese
 
-## 快速開始 Quick Start
+## Quick Start
 
-### 方式一：直接執行 Direct Run
+### Option 1: Direct Run
 
 ```bash
-# 編譯
+# Build
 go build -o nginx-req-attr ./cmd/
 
-# 匯入既有日誌
+# Import existing logs
 ./nginx-req-attr -import /var/log/nginx/access.log
 
-# 啟動服務（監控日誌 + Web GUI）
+# Start service (log monitoring + Web GUI)
 ./nginx-req-attr -config config.json
 ```
 
-### 方式二：Docker 部署 Docker Deploy
+### Option 2: Docker Deploy
 
 ```bash
-# 一鍵啟動
+# One-click start
 docker-compose up -d
 
-# 或手動 Docker
+# Or manual Docker
 docker build -t nginx-req-attr .
 docker run -d \
   -p 8080:8080 \
@@ -50,9 +51,9 @@ docker run -d \
   nginx-req-attr
 ```
 
-## 配置 Configuration
+## Configuration
 
-建立 `config.json`：
+Create `config.json`:
 
 ```json
 {
@@ -68,52 +69,52 @@ docker run -d \
 }
 ```
 
-| 欄位 Field | 說明 Description | 預設值 Default |
+| Field | Description | Default |
 |---|---|---|
-| `log_path` | Nginx 存取日誌路徑 | `/var/log/nginx/access.log` |
-| `log_format` | 日誌格式 (combined/vhost_combined) | `combined` |
-| `listen_addr` | HTTP 服務監聯地址 | `:8080` |
-| `db_path` | SQLite 資料庫檔案路徑 | `./data/stats.db` |
-| `watch` | 是否即時監控日誌 | `true` |
-| `keywords` | 要追蹤的關鍵詞列表 | `[]` |
-| `input_mode` | 輸入模式 Input mode (`file`/`syslog`/`both`) | `file` |
-| `syslog_addr` | Syslog 監聽地址 | `:1514` |
-| `syslog_proto` | Syslog 協議 (`udp`/`tcp`/`both`) | `udp` |
+| `log_path` | Nginx access log path | `/var/log/nginx/access.log` |
+| `log_format` | Log format (combined/vhost_combined) | `combined` |
+| `listen_addr` | HTTP server listen address | `:8080` |
+| `db_path` | SQLite database file path | `./data/stats.db` |
+| `watch` | Enable real-time log monitoring | `true` |
+| `keywords` | List of keywords to track | `[]` |
+| `input_mode` | Input mode (`file`/`syslog`/`both`) | `file` |
+| `syslog_addr` | Syslog listen address | `:1514` |
+| `syslog_proto` | Syslog protocol (`udp`/`tcp`/`both`) | `udp` |
 
-### 輸入模式 Input Modes
+### Input Modes
 
-- **`file`** — 使用 fsnotify 事件驅動監控日誌檔案（預設，高效率，無需修改 nginx 配置）
-- **`syslog`** — 啟動 syslog 接收器，透過網路接收 nginx 日誌（適合多實例匯聚）
-- **`both`** — 同時使用檔案監控和 syslog 接收
+- **`file`** — Uses fsnotify event-driven log file monitoring (default, efficient, no nginx config changes needed)
+- **`syslog`** — Starts a syslog receiver to receive nginx logs over the network (ideal for multi-instance aggregation)
+- **`both`** — Uses both file monitoring and syslog reception simultaneously
 
-#### Syslog 模式配置範例
+#### Syslog Mode Configuration Example
 
-Nginx 配置加入：
+Add to your Nginx configuration:
 ```nginx
 access_log syslog:server=127.0.0.1:1514,facility=local7,tag=nginx combined;
 ```
 
-## API 介面 API Endpoints
+## API Endpoints
 
 ### GET /api/stats
 
-取得統計摘要，支援以下查詢參數篩選：
+Get statistics summary. Supports the following query parameter filters:
 
-| 參數 Parameter | 說明 Description |
+| Parameter | Description |
 |---|---|
-| `start` | 開始日期 (YYYY-MM-DD) |
-| `end` | 結束日期 (YYYY-MM-DD) |
-| `ip` | IP 位址 (模糊搜尋) |
-| `path` | 路徑 (模糊搜尋) |
-| `domain` | 域名 (模糊搜尋) |
-| `query` | 查詢字串 (模糊搜尋) |
-| `method` | HTTP 方法 |
-| `status` | HTTP 狀態碼 |
-| `os` | 作業系統 |
-| `browser` | 瀏覽器 |
-| `keyword` | 關鍵詞 |
+| `start` | Start date (YYYY-MM-DD) |
+| `end` | End date (YYYY-MM-DD) |
+| `ip` | IP address (fuzzy search) |
+| `path` | Path (fuzzy search) |
+| `domain` | Domain (fuzzy search) |
+| `query` | Query string (fuzzy search) |
+| `method` | HTTP method |
+| `status` | HTTP status code |
+| `os` | Operating system |
+| `browser` | Browser |
+| `keyword` | Keyword |
 
-**回應範例 Response Example:**
+**Response Example:**
 ```json
 {
   "total_requests": 12345,
@@ -130,16 +131,16 @@ access_log syslog:server=127.0.0.1:1514,facility=local7,tag=nginx combined;
 
 ### GET /api/requests
 
-取得請求列表（分頁），額外支援：
+Get request list (paginated). Additional parameters:
 
-| 參數 Parameter | 說明 Description |
+| Parameter | Description |
 |---|---|
-| `limit` | 每頁筆數 (預設 100) |
-| `offset` | 偏移量 |
+| `limit` | Results per page (default 100) |
+| `offset` | Offset |
 
-## 支援的日誌格式 Supported Log Formats
+## Supported Log Formats
 
-### Combined (預設)
+### Combined (Default)
 ```
 $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"
 ```
@@ -149,16 +150,16 @@ $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$
 $host $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"
 ```
 
-## 開發 Development
+## Development
 
 ```bash
-# 執行測試
+# Run tests
 go test ./...
 
-# 編譯
+# Build
 go build -o nginx-req-attr ./cmd/
 ```
 
-## 授權 License
+## License
 
 MIT License
