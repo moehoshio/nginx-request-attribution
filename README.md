@@ -55,7 +55,10 @@ docker run -d \
   "listen_addr": ":8080",
   "db_path": "./data/stats.db",
   "watch": true,
-  "keywords": ["login", "admin", "api", "search"]
+  "keywords": ["login", "admin", "api", "search"],
+  "input_mode": "file",
+  "syslog_addr": ":1514",
+  "syslog_proto": "udp"
 }
 ```
 
@@ -63,10 +66,26 @@ docker run -d \
 |---|---|---|
 | `log_path` | Nginx 存取日誌路徑 | `/var/log/nginx/access.log` |
 | `log_format` | 日誌格式 (combined/vhost_combined) | `combined` |
-| `listen_addr` | HTTP 服務監聽地址 | `:8080` |
+| `listen_addr` | HTTP 服務監聯地址 | `:8080` |
 | `db_path` | SQLite 資料庫檔案路徑 | `./data/stats.db` |
 | `watch` | 是否即時監控日誌 | `true` |
 | `keywords` | 要追蹤的關鍵詞列表 | `[]` |
+| `input_mode` | 輸入模式 Input mode (`file`/`syslog`/`both`) | `file` |
+| `syslog_addr` | Syslog 監聽地址 | `:1514` |
+| `syslog_proto` | Syslog 協議 (`udp`/`tcp`/`both`) | `udp` |
+
+### 輸入模式 Input Modes
+
+- **`file`** — 使用 fsnotify 事件驅動監控日誌檔案（預設，高效率，無需修改 nginx 配置）
+- **`syslog`** — 啟動 syslog 接收器，透過網路接收 nginx 日誌（適合多實例匯聚）
+- **`both`** — 同時使用檔案監控和 syslog 接收
+
+#### Syslog 模式配置範例
+
+Nginx 配置加入：
+```nginx
+access_log syslog:server=127.0.0.1:1514,facility=local7,tag=nginx combined;
+```
 
 ## API 介面 API Endpoints
 

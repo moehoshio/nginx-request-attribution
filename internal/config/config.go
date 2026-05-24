@@ -18,16 +18,25 @@ type Config struct {
 	Watch bool `json:"watch"`
 	// Keywords to track in request paths/query strings
 	Keywords []string `json:"keywords"`
+	// Input mode: "file", "syslog", or "both"
+	InputMode string `json:"input_mode"`
+	// Syslog listen address (e.g. ":514" or "127.0.0.1:1514")
+	SyslogAddr string `json:"syslog_addr"`
+	// Syslog protocol: "udp", "tcp", or "both"
+	SyslogProto string `json:"syslog_proto"`
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		LogPath:    "/var/log/nginx/access.log",
-		LogFormat:  "combined",
-		ListenAddr: ":8080",
-		DBPath:     "./data/stats.db",
-		Watch:      true,
-		Keywords:   []string{},
+		LogPath:     "/var/log/nginx/access.log",
+		LogFormat:   "combined",
+		ListenAddr:  ":8080",
+		DBPath:      "./data/stats.db",
+		Watch:       true,
+		Keywords:    []string{},
+		InputMode:   "file",
+		SyslogAddr:  ":1514",
+		SyslogProto: "udp",
 	}
 }
 
