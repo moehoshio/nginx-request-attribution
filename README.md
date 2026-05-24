@@ -4,6 +4,12 @@
 
 A lightweight Nginx access log analytics tool with statistics dashboard and real-time monitoring.
 
+## 截圖預覽 Screenshots
+
+| Dark Mode | Light Mode |
+|:-:|:-:|
+| ![Dark Mode](docs/screenshot-dark.png) | ![Light Mode](docs/screenshot-light.png) |
+
 ## 特點 Features
 
 - 🚀 **單一二進位檔** - Go 編譯為單一可執行檔，無需額外 runtime
