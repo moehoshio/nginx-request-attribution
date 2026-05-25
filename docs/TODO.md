@@ -1,8 +1,8 @@
 # Development TODO
 
-Tracks deferred items from the Phase 1 refactor. These are intentionally
-out-of-scope for the current milestone but should be considered when planning
-later work.
+Tracks small deferred items. The phased plan (Phases 1–5) lives in
+[`ROADMAP.md`](./ROADMAP.md); this file collects sub-tasks that don't
+own a full phase.
 
 ## Parser
 

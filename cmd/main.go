@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/moehoshio/web-request-attribution/internal/api"
+	"github.com/moehoshio/web-request-attribution/internal/auth"
 	"github.com/moehoshio/web-request-attribution/internal/config"
 	"github.com/moehoshio/web-request-attribution/internal/parser"
 	"github.com/moehoshio/web-request-attribution/internal/storage"
@@ -77,9 +78,39 @@ func main() {
 	// Setup HTTP server
 	mux := http.NewServeMux()
 
-	// API routes
+	// Auth service + bootstrap admin (Phase 2). Uses the same SQLite
+	// database as the request log; tables live in independent
+	// namespaces so the schemas don't collide.
+	authSvc, err := auth.New(store.DB(), auth.Options{
+		BcryptCost:   cfg.Auth.BcryptCost,
+		SessionTTL:   time.Duration(cfg.Auth.SessionTTLHours) * time.Hour,
+		CookieSecure: cfg.Auth.CookieSecure,
+	})
+	if err != nil {
+		log.Fatalf("Failed to init auth: %v", err)
+	}
+	if ba := cfg.Auth.BootstrapAdmin; ba != nil && ba.Username != "" && ba.Password != "" {
+		created, err := authSvc.BootstrapAdmin(ba.Username, ba.Password)
+		if err != nil {
+			log.Fatalf("Failed to bootstrap admin: %v", err)
+		}
+		if created {
+			log.Printf("Bootstrap admin user %q created", ba.Username)
+		}
+	} else {
+		// Operators who skip bootstrap_admin should know that no
+		// account exists yet; otherwise the UI will return 401 for
+		// every API call with no way in.
+		if n, _ := authSvc.CountUsers(); n == 0 {
+			log.Printf("WARNING: no users exist and config.auth.bootstrap_admin is unset; nobody can log in.")
+		}
+	}
+	authH := auth.NewHandler(authSvc)
+	authH.RegisterRoutes(mux)
+
+	// API routes (protected behind RequireAuth).
 	handler := api.NewHandler(store)
-	handler.RegisterRoutes(mux)
+	handler.RegisterRoutesWithMiddleware(mux, authH.RequireAuth)
 
 	// Static files (embedded web GUI)
 	staticFS, err := fs.Sub(staticFiles, "static")

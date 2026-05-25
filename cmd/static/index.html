@@ -562,13 +562,80 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+        /* Auth overlay (Phase 2) */
+        .auth-overlay {
+            position: fixed; inset: 0; z-index: 1000;
+            background: var(--bg-primary);
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .auth-card {
+            background: var(--bg-card); backdrop-filter: blur(10px);
+            border: 1px solid var(--border); border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 32px; width: 100%; max-width: 380px;
+        }
+        .auth-card h2 { margin-bottom: 8px; color: var(--text-primary); }
+        .auth-card .subtitle { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; }
+        .auth-card label { display: block; color: var(--text-secondary); font-size: 13px; margin: 12px 0 6px; }
+        .auth-card input {
+            width: 100%; padding: 10px 12px; background: var(--bg-secondary);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            color: var(--text-primary); font-size: 14px;
+        }
+        .auth-card input:focus { outline: none; border-color: var(--accent); }
+        .auth-card .btn-primary { width: 100%; margin-top: 20px; }
+        .auth-card .error {
+            color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 12px;
+        }
+        .user-menu {
+            display: flex; align-items: center; gap: 10px;
+            color: var(--text-secondary); font-size: 13px;
+        }
+        .user-menu .badge {
+            background: var(--accent); color: #fff;
+            padding: 2px 8px; border-radius: 999px; font-size: 11px; text-transform: uppercase;
+        }
+        .users-table { width: 100%; }
+        .users-table th, .users-table td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+        .users-table .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .users-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end; margin-bottom: 20px; }
+        .users-form input, .users-form select {
+            padding: 8px 10px; background: var(--bg-secondary);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            color: var(--text-primary); font-size: 14px;
+        }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
+    <!-- Auth overlay: shown until /api/auth/me succeeds. -->
+    <div id="authOverlay" class="auth-overlay hidden">
+        <div class="auth-card">
+            <h2 data-i18n="auth_signin"></h2>
+            <p class="subtitle" data-i18n="auth_signin_subtitle"></p>
+            <form id="loginForm" onsubmit="return doLogin(event)">
+                <label data-i18n="auth_username"></label>
+                <input type="text" id="loginUsername" autocomplete="username" required>
+                <label data-i18n="auth_password"></label>
+                <input type="password" id="loginPassword" autocomplete="current-password" required>
+                <button type="submit" class="btn btn-primary" data-i18n="auth_signin_btn"></button>
+                <div id="loginError" class="error"></div>
+            </form>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
             <h1>📊 Nginx Request Attribution</h1>
             <div class="header-actions">
+                <div id="userMenu" class="user-menu hidden">
+                    <span id="userMenuName"></span>
+                    <span id="userMenuRole" class="badge"></span>
+                    <button class="btn btn-secondary" onclick="changeOwnPassword()" data-i18n="auth_change_password"></button>
+                    <button class="btn btn-secondary" onclick="doLogout()" data-i18n="auth_logout"></button>
+                </div>
                 <select id="languageSwitcher" class="language-switcher" onchange="setLanguage(this.value)" data-i18n-title="language" data-i18n-aria-label="language">
                     <option value="zh-TW">繁體中文</option>
                     <option value="zh-CN">简体中文</option>
@@ -656,6 +723,7 @@
         <div class="tabs">
             <div class="tab active" data-tab="overview" onclick="switchTab('overview')"><span aria-hidden="true">📈</span> <span data-i18n="tab_overview"></span></div>
             <div class="tab" data-tab="requests" onclick="switchTab('requests')"><span aria-hidden="true">📋</span> <span data-i18n="tab_requests"></span></div>
+            <div class="tab hidden" id="tabUsersHandle" data-tab="users" onclick="switchTab('users')"><span aria-hidden="true">👥</span> <span data-i18n="tab_users"></span></div>
         </div>
 
         <div id="tab-overview" class="panel">
@@ -688,6 +756,45 @@
                 <button class="btn btn-secondary" onclick="nextPage()"><span data-i18n="next_page"></span> <span aria-hidden="true">→</span></button>
             </div>
         </div>
+
+        <div id="tab-users" class="panel" style="display:none;">
+            <div class="users-form">
+                <div>
+                    <label data-i18n="auth_username"></label>
+                    <input type="text" id="newUserName" autocomplete="off">
+                </div>
+                <div>
+                    <label data-i18n="auth_password"></label>
+                    <input type="password" id="newUserPassword" autocomplete="new-password">
+                </div>
+                <div>
+                    <label data-i18n="users_role"></label>
+                    <select id="newUserRole">
+                        <option value="viewer">viewer</option>
+                        <option value="admin">admin</option>
+                    </select>
+                </div>
+                <div>
+                    <button class="btn btn-primary" onclick="createUser()" data-i18n="users_create"></button>
+                </div>
+            </div>
+            <div id="usersError" class="error" style="color: var(--danger); min-height: 18px; margin-bottom: 12px;"></div>
+            <div style="overflow-x:auto;">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th data-i18n="auth_username"></th>
+                            <th data-i18n="users_role"></th>
+                            <th data-i18n="users_status"></th>
+                            <th data-i18n="users_last_login"></th>
+                            <th data-i18n="users_actions"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -707,6 +814,31 @@
                 clear: '清除',
                 tab_overview: '總覽',
                 tab_requests: '請求列表',
+                tab_users: '使用者',
+                auth_signin: '登入',
+                auth_signin_subtitle: '請使用您的帳號登入以繼續',
+                auth_signin_btn: '登入',
+                auth_username: '使用者名稱',
+                auth_password: '密碼',
+                auth_logout: '登出',
+                auth_change_password: '變更密碼',
+                auth_current_password: '目前密碼',
+                auth_new_password: '新密碼',
+                auth_invalid: '使用者名稱或密碼錯誤',
+                users_role: '角色',
+                users_status: '狀態',
+                users_last_login: '最近登入',
+                users_actions: '操作',
+                users_create: '建立使用者',
+                users_disable: '停用',
+                users_enable: '啟用',
+                users_delete: '刪除',
+                users_make_admin: '設為管理員',
+                users_make_viewer: '設為檢視者',
+                users_active: '啟用中',
+                users_disabled: '已停用',
+                users_never: '從未',
+                users_confirm_delete: '確定要刪除此使用者？',
                 time: '時間',
                 status: '狀態',
                 prev_page: '上一頁',
@@ -754,6 +886,31 @@
                 clear: 'Clear',
                 tab_overview: 'Overview',
                 tab_requests: 'Requests',
+                tab_users: 'Users',
+                auth_signin: 'Sign in',
+                auth_signin_subtitle: 'Sign in with your account to continue',
+                auth_signin_btn: 'Sign in',
+                auth_username: 'Username',
+                auth_password: 'Password',
+                auth_logout: 'Sign out',
+                auth_change_password: 'Change password',
+                auth_current_password: 'Current password',
+                auth_new_password: 'New password',
+                auth_invalid: 'Invalid username or password',
+                users_role: 'Role',
+                users_status: 'Status',
+                users_last_login: 'Last login',
+                users_actions: 'Actions',
+                users_create: 'Create user',
+                users_disable: 'Disable',
+                users_enable: 'Enable',
+                users_delete: 'Delete',
+                users_make_admin: 'Make admin',
+                users_make_viewer: 'Make viewer',
+                users_active: 'Active',
+                users_disabled: 'Disabled',
+                users_never: 'Never',
+                users_confirm_delete: 'Delete this user?',
                 time: 'Time',
                 status: 'Status',
                 prev_page: 'Previous',
@@ -801,6 +958,31 @@
                 clear: '清除',
                 tab_overview: '总览',
                 tab_requests: '请求列表',
+                tab_users: '用户',
+                auth_signin: '登录',
+                auth_signin_subtitle: '请使用您的账号登录以继续',
+                auth_signin_btn: '登录',
+                auth_username: '用户名',
+                auth_password: '密码',
+                auth_logout: '登出',
+                auth_change_password: '修改密码',
+                auth_current_password: '当前密码',
+                auth_new_password: '新密码',
+                auth_invalid: '用户名或密码错误',
+                users_role: '角色',
+                users_status: '状态',
+                users_last_login: '最近登录',
+                users_actions: '操作',
+                users_create: '创建用户',
+                users_disable: '停用',
+                users_enable: '启用',
+                users_delete: '删除',
+                users_make_admin: '设为管理员',
+                users_make_viewer: '设为查看者',
+                users_active: '已启用',
+                users_disabled: '已停用',
+                users_never: '从未',
+                users_confirm_delete: '确定要删除此用户？',
                 time: '时间',
                 status: '状态',
                 prev_page: '上一页',
@@ -848,6 +1030,31 @@
                 clear: 'クリア',
                 tab_overview: '概要',
                 tab_requests: 'リクエスト一覧',
+                tab_users: 'ユーザー',
+                auth_signin: 'サインイン',
+                auth_signin_subtitle: 'アカウントでサインインしてください',
+                auth_signin_btn: 'サインイン',
+                auth_username: 'ユーザー名',
+                auth_password: 'パスワード',
+                auth_logout: 'ログアウト',
+                auth_change_password: 'パスワード変更',
+                auth_current_password: '現在のパスワード',
+                auth_new_password: '新しいパスワード',
+                auth_invalid: 'ユーザー名またはパスワードが違います',
+                users_role: 'ロール',
+                users_status: '状態',
+                users_last_login: '最終ログイン',
+                users_actions: '操作',
+                users_create: 'ユーザー作成',
+                users_disable: '無効化',
+                users_enable: '有効化',
+                users_delete: '削除',
+                users_make_admin: '管理者にする',
+                users_make_viewer: '閲覧者にする',
+                users_active: '有効',
+                users_disabled: '無効',
+                users_never: 'なし',
+                users_confirm_delete: 'このユーザーを削除しますか？',
                 time: '時間',
                 status: 'ステータス',
                 prev_page: '前へ',
@@ -1016,13 +1223,15 @@
             document.querySelector('[data-tab="' + tab + '"]').classList.add('active');
             document.getElementById('tab-overview').style.display = tab === 'overview' ? 'block' : 'none';
             document.getElementById('tab-requests').style.display = tab === 'requests' ? 'block' : 'none';
+            document.getElementById('tab-users').style.display = tab === 'users' ? 'block' : 'none';
             if (tab === 'requests') loadRequests();
+            if (tab === 'users') loadUsers();
         }
 
         async function loadStats() {
             const params = getFilters();
             try {
-                const res = await fetch('/api/stats?' + params.toString());
+                const res = await authFetch('/api/stats?' + params.toString());
                 const data = await res.json();
                 lastStatsData = data;
                 renderStatsCards(data);
@@ -1090,7 +1299,7 @@
             params.set('limit', pageSize);
             params.set('offset', (currentPage - 1) * pageSize);
             try {
-                const res = await fetch('/api/requests?' + params.toString());
+                const res = await authFetch('/api/requests?' + params.toString());
                 const data = await res.json();
                 totalResults = data.total || 0;
                 lastRequestRows = data.rows || [];
@@ -1137,10 +1346,217 @@
             }
         }
 
+        // ---- Auth (Phase 2) -------------------------------------------------
+
+        // Reads a cookie by name. Used to pull the CSRF cookie value
+        // for the X-CSRF-Token header (double-submit cookie pattern).
+        function getCookie(name) {
+            const parts = document.cookie.split('; ');
+            for (const p of parts) {
+                const i = p.indexOf('=');
+                if (i > 0 && p.substring(0, i) === name) {
+                    return decodeURIComponent(p.substring(i + 1));
+                }
+            }
+            return '';
+        }
+
+        let currentUser = null;
+
+        // authFetch is a thin wrapper around fetch() that:
+        //  - always sends cookies (same-origin), so the session cookie travels
+        //  - sets X-CSRF-Token on unsafe methods so the server's CSRF check passes
+        //  - returns the underlying Response so callers handle status themselves
+        async function authFetch(url, opts) {
+            opts = opts || {};
+            opts.credentials = 'same-origin';
+            const method = (opts.method || 'GET').toUpperCase();
+            if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+                opts.headers = opts.headers || {};
+                opts.headers['X-CSRF-Token'] = getCookie('war_csrf');
+            }
+            const res = await fetch(url, opts);
+            if (res.status === 401) {
+                // Session lapsed / never existed: bounce to login.
+                showLogin();
+            }
+            return res;
+        }
+
+        function showLogin() {
+            document.getElementById('authOverlay').classList.remove('hidden');
+            document.getElementById('userMenu').classList.add('hidden');
+            document.getElementById('tabUsersHandle').classList.add('hidden');
+            currentUser = null;
+        }
+
+        function hideLogin() {
+            document.getElementById('authOverlay').classList.add('hidden');
+        }
+
+        function applyUserToHeader(u) {
+            currentUser = u;
+            const menu = document.getElementById('userMenu');
+            menu.classList.remove('hidden');
+            document.getElementById('userMenuName').textContent = u.username;
+            document.getElementById('userMenuRole').textContent = u.role;
+            if (u.role === 'admin') {
+                document.getElementById('tabUsersHandle').classList.remove('hidden');
+            } else {
+                document.getElementById('tabUsersHandle').classList.add('hidden');
+            }
+        }
+
+        async function checkSession() {
+            try {
+                const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+                if (!res.ok) { showLogin(); return false; }
+                const data = await res.json();
+                if (!data.user) { showLogin(); return false; }
+                applyUserToHeader(data.user);
+                hideLogin();
+                return true;
+            } catch (e) {
+                showLogin();
+                return false;
+            }
+        }
+
+        async function doLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const errEl = document.getElementById('loginError');
+            errEl.textContent = '';
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: username, password: password })
+                });
+                if (!res.ok) {
+                    errEl.textContent = t('auth_invalid');
+                    return false;
+                }
+                const data = await res.json();
+                applyUserToHeader(data.user);
+                hideLogin();
+                document.getElementById('loginPassword').value = '';
+                loadStats();
+                return false;
+            } catch (e) {
+                errEl.textContent = t('auth_invalid');
+                return false;
+            }
+        }
+
+        async function doLogout() {
+            await authFetch('/api/auth/logout', { method: 'POST' });
+            showLogin();
+        }
+
+        async function changeOwnPassword() {
+            const cur = prompt(t('auth_current_password'));
+            if (cur === null) return;
+            const next = prompt(t('auth_new_password'));
+            if (next === null) return;
+            const res = await authFetch('/api/users/me/password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ current_password: cur, new_password: next })
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(function() { return {}; });
+                alert(data.error || 'error');
+                return;
+            }
+            // Server has invalidated the session; force re-login.
+            showLogin();
+        }
+
+        // ---- Users admin panel (admin only) ---------------------------------
+
+        async function loadUsers() {
+            const res = await authFetch('/api/users');
+            if (!res.ok) return;
+            const data = await res.json();
+            const body = document.getElementById('usersBody');
+            body.innerHTML = (data.users || []).map(function(u) {
+                const last = u.last_login_at ? new Date(u.last_login_at).toLocaleString(currentLang) : t('users_never');
+                const statusLabel = u.disabled ? t('users_disabled') : t('users_active');
+                const toggleLabel = u.disabled ? t('users_enable') : t('users_disable');
+                const roleSwitchLabel = u.role === 'admin' ? t('users_make_viewer') : t('users_make_admin');
+                const targetRole = u.role === 'admin' ? 'viewer' : 'admin';
+                const isSelf = currentUser && currentUser.id === u.id;
+                const disableBtn = isSelf ? '' : '<button class="btn btn-secondary" onclick="toggleUserDisabled(' + u.id + ',' + (!u.disabled) + ')">' + escapeHtml(toggleLabel) + '</button>';
+                const deleteBtn = isSelf ? '' : '<button class="btn btn-secondary" onclick="deleteUser(' + u.id + ')">' + escapeHtml(t('users_delete')) + '</button>';
+                const roleBtn = '<button class="btn btn-secondary" onclick="setUserRole(' + u.id + ',\'' + targetRole + '\')">' + escapeHtml(roleSwitchLabel) + '</button>';
+                return '<tr>' +
+                    '<td>' + u.id + '</td>' +
+                    '<td>' + escapeHtml(u.username) + '</td>' +
+                    '<td>' + escapeHtml(u.role) + '</td>' +
+                    '<td>' + escapeHtml(statusLabel) + '</td>' +
+                    '<td>' + escapeHtml(last) + '</td>' +
+                    '<td class="actions">' + roleBtn + disableBtn + deleteBtn + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        async function createUser() {
+            const username = document.getElementById('newUserName').value.trim();
+            const password = document.getElementById('newUserPassword').value;
+            const role = document.getElementById('newUserRole').value;
+            const errEl = document.getElementById('usersError');
+            errEl.textContent = '';
+            if (!username || !password) { errEl.textContent = 'username/password required'; return; }
+            const res = await authFetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, password: password, role: role })
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(function() { return {}; });
+                errEl.textContent = data.error || 'error';
+                return;
+            }
+            document.getElementById('newUserName').value = '';
+            document.getElementById('newUserPassword').value = '';
+            loadUsers();
+        }
+
+        async function toggleUserDisabled(id, disabled) {
+            await authFetch('/api/users/' + id, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ disabled: disabled })
+            });
+            loadUsers();
+        }
+
+        async function setUserRole(id, role) {
+            await authFetch('/api/users/' + id, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: role })
+            });
+            loadUsers();
+        }
+
+        async function deleteUser(id) {
+            if (!confirm(t('users_confirm_delete'))) return;
+            await authFetch('/api/users/' + id, { method: 'DELETE' });
+            loadUsers();
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
             applyLanguage();
-            loadStats();
+            // Always start with the login overlay until /me confirms a session.
+            showLogin();
+            checkSession().then(function(ok) {
+                if (ok) { loadStats(); }
+            });
         });
     </script>
 </body>

@@ -50,6 +50,31 @@ type Config struct {
 	Keywords []string `json:"keywords"`
 	// Sources is the list of log inputs to ingest from.
 	Sources []Source `json:"sources"`
+	// Auth contains bootstrap settings for the account system. See
+	// docs/ROADMAP.md (Phase 2).
+	Auth AuthConfig `json:"auth"`
+}
+
+// AuthConfig holds settings consumed at startup by the auth package.
+type AuthConfig struct {
+	// BootstrapAdmin creates the named admin user on first launch when
+	// the users table is empty. Both fields are required to trigger
+	// the bootstrap; otherwise the operator must create the first user
+	// out-of-band (e.g. by inserting into SQLite directly).
+	BootstrapAdmin *BootstrapAdmin `json:"bootstrap_admin,omitempty"`
+	// BcryptCost overrides the bcrypt cost parameter. 0 → default (10).
+	BcryptCost int `json:"bcrypt_cost,omitempty"`
+	// SessionTTLHours overrides the session lifetime. 0 → 24 hours.
+	SessionTTLHours int `json:"session_ttl_hours,omitempty"`
+	// CookieSecure issues cookies with the Secure attribute (HTTPS only).
+	CookieSecure bool `json:"cookie_secure,omitempty"`
+}
+
+// BootstrapAdmin describes the initial admin account created on first
+// launch.
+type BootstrapAdmin struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 // DefaultConfig returns a Config populated with sensible defaults and a single

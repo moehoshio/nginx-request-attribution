@@ -69,7 +69,15 @@ Create `config.json`:
       "read_compressed": false,
       "format": { "engine": "nginx", "preset": "combined" }
     }
-  ]
+  ],
+  "auth": {
+    "bootstrap_admin": {
+      "username": "admin",
+      "password": "change-me-on-first-login"
+    },
+    "session_ttl_hours": 24,
+    "cookie_secure": false
+  }
 }
 ```
 
@@ -82,6 +90,18 @@ Create `config.json`:
 | `watch` | Enable real-time log monitoring | `true` |
 | `keywords` | List of keywords to track | `[]` |
 | `sources` | List of log sources to ingest from (see below) | `[]` |
+| `auth` | Account-system settings (see [Authentication](#authentication)) | – |
+
+### Authentication
+
+The dashboard and `/api/*` endpoints are gated behind login. On first
+launch, set `auth.bootstrap_admin` to seed the initial administrator
+account; once `users` has at least one row, the bootstrap block is
+ignored and can be removed. Sessions are HttpOnly cookies; non-GET API
+calls also require the `X-CSRF-Token` header (the dashboard JS handles
+this automatically via a double-submit cookie). Set `cookie_secure: true`
+when serving over HTTPS. Additional accounts can be created from the
+**Users** tab once you are signed in as an admin.
 
 ### Source fields
 

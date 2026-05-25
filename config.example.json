@@ -14,5 +14,13 @@
         "preset": "combined"
       }
     }
-  ]
+  ],
+  "auth": {
+    "bootstrap_admin": {
+      "username": "admin",
+      "password": "change-me-on-first-login"
+    },
+    "session_ttl_hours": 24,
+    "cookie_secure": false
+  }
 }

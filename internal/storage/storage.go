@@ -395,3 +395,7 @@ func buildKeywordWhere(f QueryFilter) (string, []interface{}) {
 func (s *Store) Close() error {
 	return s.db.Close()
 }
+
+// DB returns the underlying *sql.DB so other packages (e.g. internal/auth)
+// can attach their own tables without re-opening the file.
+func (s *Store) DB() *sql.DB { return s.db }
