@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -66,7 +67,82 @@ func (s *Store) migrate() error {
 			FOREIGN KEY (request_id) REFERENCES requests(id)
 		);
 		CREATE INDEX IF NOT EXISTS idx_keyword_hits_keyword ON keyword_hits(keyword);
+
+		-- file_state tracks per-file ingestion position so the directory
+		-- watcher (Phase 4) can survive restarts and detect rotation by
+		-- inode change. The same table is used for one-shot compressed
+		-- archive imports: completed archives are recorded with
+		-- offset = size so they are not re-imported on the next scan.
+		--
+		-- fingerprint stores the first few dozen bytes of the file so
+		-- rotation can be detected even on filesystems that reuse
+		-- inodes when a file is removed and immediately recreated
+		-- (e.g. tmpfs).
+		CREATE TABLE IF NOT EXISTS file_state (
+			path TEXT PRIMARY KEY,
+			inode INTEGER NOT NULL,
+			size INTEGER NOT NULL,
+			offset INTEGER NOT NULL,
+			mtime DATETIME NOT NULL,
+			fingerprint BLOB NOT NULL DEFAULT x'',
+			updated_at DATETIME NOT NULL
+		);
 	`)
+	return err
+}
+
+// FileState records per-file ingestion progress for the directory
+// watcher. Inode is 0 on platforms that don't expose it (e.g. Windows);
+// rotation detection then falls back to (size, mtime, fingerprint).
+//
+// Fingerprint holds the first FingerprintSize bytes of the file at the
+// time the row was last written. A mismatch on a later stat signals
+// the file was rewritten from the beginning (rotation by truncate or
+// inode reuse).
+type FileState struct {
+	Path        string
+	Inode       uint64
+	Size        int64
+	Offset      int64
+	MTime       time.Time
+	Fingerprint []byte
+}
+
+// FingerprintSize is the number of leading bytes the directory watcher
+// reads to detect rotation on filesystems that reuse inodes.
+const FingerprintSize = 64
+
+// GetFileState returns the stored state for path, or ok=false when no
+// row exists yet.
+func (s *Store) GetFileState(path string) (FileState, bool, error) {
+	var fs FileState
+	err := s.db.QueryRow(
+		`SELECT path, inode, size, offset, mtime, fingerprint FROM file_state WHERE path = ?`,
+		path,
+	).Scan(&fs.Path, &fs.Inode, &fs.Size, &fs.Offset, &fs.MTime, &fs.Fingerprint)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return FileState{}, false, nil
+		}
+		return FileState{}, false, err
+	}
+	return fs, true, nil
+}
+
+// UpsertFileState writes (or overwrites) the row for fs.Path.
+func (s *Store) UpsertFileState(fs FileState) error {
+	_, err := s.db.Exec(
+		`INSERT INTO file_state (path, inode, size, offset, mtime, fingerprint, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(path) DO UPDATE SET
+		   inode = excluded.inode,
+		   size = excluded.size,
+		   offset = excluded.offset,
+		   mtime = excluded.mtime,
+		   fingerprint = excluded.fingerprint,
+		   updated_at = excluded.updated_at`,
+		fs.Path, fs.Inode, fs.Size, fs.Offset, fs.MTime, fs.Fingerprint, time.Now().UTC(),
+	)
 	return err
 }
 

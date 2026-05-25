@@ -152,6 +152,17 @@ func (m *Manager) startLocked(s runtimeconfig.Source, keywords []string) error {
 		}()
 		log.Printf("watcher: started file source %q on %s [parser=%s]", s.Name, s.Path, p.Name())
 
+	case runtimeconfig.SourceDir:
+		dw := NewDirWatcher(m.store, s, append([]string(nil), keywords...), p)
+		go func() {
+			defer close(done)
+			if err := dw.Watch(ctx); err != nil {
+				log.Printf("dir watcher %q stopped: %v", s.Name, err)
+			}
+		}()
+		log.Printf("watcher: started dir source %q on %s [pattern=%q recursive=%v parser=%s]",
+			s.Name, s.Path, s.Pattern, s.Recursive, p.Name())
+
 	case runtimeconfig.SourceSyslog:
 		sr := NewSyslogReceiver(m.store, s.Addr, s.Proto, append([]string(nil), keywords...), p)
 		go func() {
@@ -190,6 +201,8 @@ func sourcesEqual(a, b runtimeconfig.Source) bool {
 		a.Addr == b.Addr &&
 		a.Proto == b.Proto &&
 		a.ReadCompressed == b.ReadCompressed &&
+		a.Pattern == b.Pattern &&
+		a.Recursive == b.Recursive &&
 		a.Format == b.Format
 }
 

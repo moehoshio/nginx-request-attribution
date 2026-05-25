@@ -66,10 +66,11 @@ type bootstrapView struct {
 // drive the settings form (engine/preset enums, restart-required
 // flags). Anything not in here is currently hard-coded in the HTML.
 type schemaView struct {
-	Engines        []string `json:"engines"`
-	NginxPresets   []string `json:"nginx_presets"`
-	ApachePresets  []string `json:"apache_presets"`
-	SyslogProtos   []string `json:"syslog_protos"`
+	Engines         []string `json:"engines"`
+	NginxPresets    []string `json:"nginx_presets"`
+	ApachePresets   []string `json:"apache_presets"`
+	SyslogProtos    []string `json:"syslog_protos"`
+	SourceTypes     []string `json:"source_types"`
 	RestartRequired []string `json:"restart_required"`
 }
 
@@ -88,6 +89,7 @@ func (h *ConfigHandler) handleConfig(w http.ResponseWriter, r *http.Request) {
 				NginxPresets:    []string{"combined", "vhost_combined"},
 				ApachePresets:   []string{"common", "combined", "vhost_combined"},
 				SyslogProtos:    []string{"udp", "tcp"},
+				SourceTypes:     []string{"file", "dir", "syslog"},
 				RestartRequired: []string{"listen_addr", "db_path", "allowed_log_roots"},
 			},
 		})

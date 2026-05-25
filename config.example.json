@@ -24,6 +24,19 @@
         "engine": "nginx",
         "preset": "combined"
       }
+    },
+    {
+      "_comment": "Example dir source: scans /var/log/nginx for access*.log* files (live tails plain files, one-shot imports .gz archives when read_compressed is true).",
+      "name": "nginx-dir",
+      "type": "dir",
+      "path": "/var/log/nginx",
+      "pattern": "access*.log*",
+      "recursive": false,
+      "read_compressed": true,
+      "format": {
+        "engine": "nginx",
+        "preset": "combined"
+      }
     }
   ]
 }

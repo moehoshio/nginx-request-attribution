@@ -92,14 +92,22 @@ the panel surfaces them as read-only context.
 Goal: replace bespoke per-file configuration with a `type: "dir"`
 source that handles rotation correctly.
 
-- Recursive directory scan + glob filter (e.g. `access*.log*`).
-- `file_state(path, inode, size, offset, mtime)` table tracks per-file
-  position so the watcher survives restart and detects rotation by
-  inode change.
-- One-shot import of rotated `.gz` (and eventually `.bz2` / `.xz`)
-  files; live tailing for the active file.
+- A new `type: "dir"` source scans a directory tree for files whose
+  basename matches a glob (e.g. `access*.log*`). `recursive: true`
+  descends into subdirectories; otherwise only the top level is
+  scanned.
+- `file_state(path, inode, size, offset, mtime, fingerprint)` tracks
+  per-file position so the watcher survives restart. Rotation is
+  detected via inode change, size shrink (truncate), or a content
+  fingerprint mismatch — the last one covers filesystems that reuse
+  inodes (e.g. tmpfs).
+- One-shot import of rotated `.gz` archives when
+  `read_compressed: true`; subsequent scans skip already-imported
+  archives by recording `offset = size`. Live tailing for the active
+  plain files.
 - Integrates with the settings panel (Phase 3): directory sources are
-  configured from the UI like any other source.
+  configured from the UI like file/syslog sources, with extra
+  inputs for the filename glob and recursion toggle.
 
 ## Phase 5 — Documentation / screenshots / integration tests
 

@@ -73,7 +73,7 @@ docker run -d \
 }
 ```
 
-> 詳細的來源欄位（`type` / `format.engine` / `format.preset` / `format.pattern` / `read_compressed` 等）以及自訂格式變數列表，請參考英文 [README](README.md#configuration) 與 [`docs/TODO.md`](docs/TODO.md)。已支援 **Nginx**、**Apache**（讀取日誌檔）、**自訂格式** 與 `.gz` 壓縮日誌。
+> 詳細的來源欄位（`type` / `format.engine` / `format.preset` / `format.pattern` / `read_compressed` / `pattern` / `recursive` 等）以及自訂格式變數列表，請參考英文 [README](README.md#configuration) 與 [`docs/TODO.md`](docs/TODO.md)。已支援 **Nginx**、**Apache**（讀取日誌檔）、**自訂格式**、`.gz` 壓縮日誌，以及 **資料夾掃描** (`type: "dir"` + 檔名 glob，自動處理日誌輪替)。
 
 
 #### Syslog 模式配置範例

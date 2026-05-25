@@ -827,6 +827,7 @@
             <div id="settingsSources"></div>
             <div style="margin-top: 12px;">
                 <button class="btn btn-secondary" onclick="addSourceRow('file')" data-i18n="settings_add_file"></button>
+                <button class="btn btn-secondary" onclick="addSourceRow('dir')" data-i18n="settings_add_dir"></button>
                 <button class="btn btn-secondary" onclick="addSourceRow('syslog')" data-i18n="settings_add_syslog"></button>
             </div>
 
@@ -934,7 +935,10 @@
                 settings_preset: '預設格式',
                 settings_pattern: '自訂格式 pattern',
                 settings_add_file: '新增檔案來源',
+                settings_add_dir: '新增資料夾來源',
                 settings_add_syslog: '新增 Syslog 來源',
+                settings_pattern_glob: '檔名匹配 (glob)',
+                settings_recursive: '遞迴搜尋子資料夾',
                 settings_remove: '移除',
                 settings_save: '儲存',
                 settings_reload: '重新載入',
@@ -1038,7 +1042,10 @@
                 settings_preset: 'Preset',
                 settings_pattern: 'Custom pattern',
                 settings_add_file: 'Add file source',
+                settings_add_dir: 'Add directory source',
                 settings_add_syslog: 'Add syslog source',
+                settings_pattern_glob: 'Filename glob',
+                settings_recursive: 'Recurse into subdirectories',
                 settings_remove: 'Remove',
                 settings_save: 'Save',
                 settings_reload: 'Reload',
@@ -1142,7 +1149,10 @@
                 settings_preset: '预设格式',
                 settings_pattern: '自定义 pattern',
                 settings_add_file: '新增文件来源',
+                settings_add_dir: '新增文件夹来源',
                 settings_add_syslog: '新增 Syslog 来源',
+                settings_pattern_glob: '文件名匹配 (glob)',
+                settings_recursive: '递归搜索子目录',
                 settings_remove: '移除',
                 settings_save: '保存',
                 settings_reload: '重新加载',
@@ -1246,7 +1256,10 @@
                 settings_preset: 'プリセット',
                 settings_pattern: 'カスタムパターン',
                 settings_add_file: 'ファイルソース追加',
+                settings_add_dir: 'ディレクトリソース追加',
                 settings_add_syslog: 'Syslog ソース追加',
+                settings_pattern_glob: 'ファイル名 glob',
+                settings_recursive: 'サブディレクトリも再帰探索',
                 settings_remove: '削除',
                 settings_save: '保存',
                 settings_reload: '再読み込み',
@@ -1750,16 +1763,30 @@
                     return '<option value="' + p + '"' + (s.proto === p ? ' selected' : '') + '>' + p + '</option>';
                 }).join('');
                 const isFile = s.type === 'file';
+                const isDir = s.type === 'dir';
+                const isSyslog = s.type === 'syslog';
                 const isCustom = s.format && s.format.engine === 'custom';
+                let typeBlock;
+                if (isFile) {
+                    typeBlock =
+                        '<div style="grid-column:span 2;"><label data-i18n="settings_path"></label><input type="text" data-field="path" value="' + escapeAttr(s.path || '') + '"></div>' +
+                        '<div><label><input type="checkbox" data-field="read_compressed"' + (s.read_compressed ? ' checked' : '') + '> <span data-i18n="settings_read_compressed"></span></label></div>';
+                } else if (isDir) {
+                    typeBlock =
+                        '<div style="grid-column:span 2;"><label data-i18n="settings_path"></label><input type="text" data-field="path" value="' + escapeAttr(s.path || '') + '"></div>' +
+                        '<div><label data-i18n="settings_pattern_glob"></label><input type="text" data-field="pattern_glob" value="' + escapeAttr(s.pattern || '') + '"></div>' +
+                        '<div><label><input type="checkbox" data-field="recursive"' + (s.recursive ? ' checked' : '') + '> <span data-i18n="settings_recursive"></span></label></div>' +
+                        '<div><label><input type="checkbox" data-field="read_compressed"' + (s.read_compressed ? ' checked' : '') + '> <span data-i18n="settings_read_compressed"></span></label></div>';
+                } else {
+                    typeBlock =
+                        '<div><label data-i18n="settings_addr"></label><input type="text" data-field="addr" value="' + escapeAttr(s.addr || '') + '"></div>' +
+                        '<div><label data-i18n="settings_proto"></label><select data-field="proto">' + protoSelect + '</select></div>';
+                }
                 return '<div class="source-row" data-i="' + i + '" style="border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; margin-bottom:10px;">' +
                     '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; align-items:end;">' +
                     '<div><label data-i18n="settings_source_name"></label><input type="text" data-field="name" value="' + escapeAttr(s.name || '') + '"></div>' +
                     '<div><label data-i18n="settings_source_type"></label><div style="padding:6px;">' + escapeHtml(s.type) + '</div></div>' +
-                    (isFile
-                        ? ('<div style="grid-column:span 2;"><label data-i18n="settings_path"></label><input type="text" data-field="path" value="' + escapeAttr(s.path || '') + '"></div>' +
-                           '<div><label><input type="checkbox" data-field="read_compressed"' + (s.read_compressed ? ' checked' : '') + '> <span data-i18n="settings_read_compressed"></span></label></div>')
-                        : ('<div><label data-i18n="settings_addr"></label><input type="text" data-field="addr" value="' + escapeAttr(s.addr || '') + '"></div>' +
-                           '<div><label data-i18n="settings_proto"></label><select data-field="proto">' + protoSelect + '</select></div>')) +
+                    typeBlock +
                     '<div><label data-i18n="settings_engine"></label><select data-field="engine">' + engineSelect + '</select></div>' +
                     (isCustom
                         ? '<div style="grid-column:span 2;"><label data-i18n="settings_pattern"></label><input type="text" data-field="pattern" value="' + escapeAttr(s.format && s.format.pattern || '') + '"></div>'
@@ -1781,6 +1808,12 @@
                             // Engine swap can change which preset list is valid;
                             // re-render so the dropdown updates.
                             if (f === 'engine') renderSourceRows();
+                        } else if (f === 'pattern_glob') {
+                            // The directory source's filename glob lives in
+                            // `s.pattern`; we use a different data-field
+                            // name so it doesn't collide with the
+                            // custom-format `format.pattern` above.
+                            s.pattern = v;
                         } else {
                             s[f] = v;
                         }
@@ -1791,14 +1824,23 @@
         }
 
         function addSourceRow(type) {
-            settingsSources.push({
+            const row = {
                 name: '',
                 type: type,
-                format: { engine: 'nginx', preset: 'combined' },
-                path: type === 'file' ? '' : undefined,
-                addr: type === 'syslog' ? ':1514' : undefined,
-                proto: type === 'syslog' ? 'udp' : undefined
-            });
+                format: { engine: 'nginx', preset: 'combined' }
+            };
+            if (type === 'file') {
+                row.path = '';
+            } else if (type === 'dir') {
+                row.path = '';
+                row.pattern = 'access*.log*';
+                row.recursive = false;
+                row.read_compressed = false;
+            } else if (type === 'syslog') {
+                row.addr = ':1514';
+                row.proto = 'udp';
+            }
+            settingsSources.push(row);
             renderSourceRows();
         }
 
@@ -1849,6 +1891,11 @@
                 }
                 if (s.type === 'file') {
                     out.path = s.path || '';
+                    out.read_compressed = !!s.read_compressed;
+                } else if (s.type === 'dir') {
+                    out.path = s.path || '';
+                    out.pattern = s.pattern || '';
+                    out.recursive = !!s.recursive;
                     out.read_compressed = !!s.read_compressed;
                 } else if (s.type === 'syslog') {
                     out.addr = s.addr || '';

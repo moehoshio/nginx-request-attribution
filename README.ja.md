@@ -73,7 +73,7 @@ docker run -d \
 }
 ```
 
-> 詳細なソースフィールド（`type` / `format.engine` / `format.preset` / `format.pattern` / `read_compressed` など）とカスタム形式の変数一覧については、英語版 [README](README.md#configuration) と [`docs/TODO.md`](docs/TODO.md) を参照してください。**Nginx**、**Apache**（ログファイル読み取り）、**カスタム形式**、`.gz` 圧縮ログをサポートしています。
+> 詳細なソースフィールド（`type` / `format.engine` / `format.preset` / `format.pattern` / `read_compressed` / `pattern` / `recursive` など）とカスタム形式の変数一覧については、英語版 [README](README.md#configuration) と [`docs/TODO.md`](docs/TODO.md) を参照してください。**Nginx**、**Apache**（ログファイル読み取り）、**カスタム形式**、`.gz` 圧縮ログ、および **ディレクトリ スキャン**（`type: "dir"` + ファイル名 glob、ローテーション自動対応）をサポートしています。
 
 
 #### Syslog モード設定例
