@@ -14,6 +14,7 @@ type SourceType string
 
 const (
 	SourceFile   SourceType = "file"
+	SourceDir    SourceType = "dir"
 	SourceSyslog SourceType = "syslog"
 )
 
@@ -21,17 +22,23 @@ const (
 type Source struct {
 	// Name is an optional human-readable identifier.
 	Name string `json:"name,omitempty"`
-	// Type is "file" or "syslog".
+	// Type is "file", "dir", or "syslog".
 	Type SourceType `json:"type"`
 	// Format describes how to parse lines from this source.
 	Format parser.FormatConfig `json:"format"`
 
-	// File-source fields.
+	// File- and dir-source fields.
 	Path string `json:"path,omitempty"`
 	// ReadCompressed enables reading rotated/archived `.gz` files when first
 	// opening the source. Live tailing of compressed files is not supported.
 	// Support for `.bz2`/`.xz` is tracked in docs/TODO.md.
 	ReadCompressed bool `json:"read_compressed,omitempty"`
+
+	// Dir-source fields. Pattern is a filepath-glob matched against
+	// the basename of discovered files (e.g. `access*.log*`).
+	// Recursive enables descending into subdirectories.
+	Pattern   string `json:"pattern,omitempty"`
+	Recursive bool   `json:"recursive,omitempty"`
 
 	// Syslog-source fields.
 	Addr  string `json:"addr,omitempty"`
@@ -152,6 +159,10 @@ func (c *Config) Validate() error {
 			if s.Path == "" {
 				return fmt.Errorf("sources[%d]: file source requires \"path\"", i)
 			}
+		case SourceDir:
+			if s.Path == "" {
+				return fmt.Errorf("sources[%d]: dir source requires \"path\"", i)
+			}
 		case SourceSyslog:
 			if s.Addr == "" {
 				return fmt.Errorf("sources[%d]: syslog source requires \"addr\"", i)
@@ -189,6 +200,8 @@ func (c *Config) RuntimeSeed() runtimeconfig.Runtime {
 			Format:         s.Format,
 			Path:           s.Path,
 			ReadCompressed: s.ReadCompressed,
+			Pattern:        s.Pattern,
+			Recursive:      s.Recursive,
 			Addr:           s.Addr,
 			Proto:          s.Proto,
 		})

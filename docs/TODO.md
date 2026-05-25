@@ -24,10 +24,11 @@ own a full phase.
 
 ## Directory / glob sources
 
-- [ ] A `type: "dir"` source that recursively scans a directory for files
+- [x] A `type: "dir"` source that recursively scans a directory for files
       matching a glob (e.g. `access*.log*`), tracks `(inode, offset)` in a
       `file_state` table to survive rotation, and integrates with the live
-      tailer.
+      tailer. Compressed archives (`.gz`) are one-shot imported when
+      `read_compressed: true` is set; plain files are live-tailed.
 
 ## Apache integration (beyond log reading)
 

@@ -73,7 +73,7 @@ docker run -d \
 }
 ```
 
-> 详细的来源字段（`type` / `format.engine` / `format.preset` / `format.pattern` / `read_compressed` 等）以及自定义格式变量列表，请参考英文 [README](README.md#configuration) 与 [`docs/TODO.md`](docs/TODO.md)。已支持 **Nginx**、**Apache**（读取日志文件）、**自定义格式** 与 `.gz` 压缩日志。
+> 详细的来源字段（`type` / `format.engine` / `format.preset` / `format.pattern` / `read_compressed` / `pattern` / `recursive` 等）以及自定义格式变量列表，请参考英文 [README](README.md#configuration) 与 [`docs/TODO.md`](docs/TODO.md)。已支持 **Nginx**、**Apache**（读取日志文件）、**自定义格式**、`.gz` 压缩日志，以及 **目录扫描** (`type: "dir"` + 文件名 glob，自动处理日志轮替)。
 
 
 #### Syslog 模式配置示例

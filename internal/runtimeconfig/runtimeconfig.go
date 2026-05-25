@@ -30,6 +30,7 @@ type SourceType string
 
 const (
 	SourceFile   SourceType = "file"
+	SourceDir    SourceType = "dir"
 	SourceSyslog SourceType = "syslog"
 )
 
@@ -42,8 +43,15 @@ type Source struct {
 	Format         parser.FormatConfig `json:"format"`
 	Path           string              `json:"path,omitempty"`
 	ReadCompressed bool                `json:"read_compressed,omitempty"`
-	Addr           string              `json:"addr,omitempty"`
-	Proto          string              `json:"proto,omitempty"`
+	// Pattern is a filepath-glob (e.g. "access*.log*") matched against
+	// the basename of files discovered by a "dir" source. Empty
+	// matches everything.
+	Pattern string `json:"pattern,omitempty"`
+	// Recursive enables descending into subdirectories for a "dir"
+	// source. Defaults to false (top-level scan only).
+	Recursive bool   `json:"recursive,omitempty"`
+	Addr      string `json:"addr,omitempty"`
+	Proto     string `json:"proto,omitempty"`
 }
 
 // Key returns a stable identifier used by the watcher manager to diff
@@ -52,6 +60,8 @@ func (s Source) Key() string {
 	switch s.Type {
 	case SourceFile:
 		return "file|" + s.Path
+	case SourceDir:
+		return "dir|" + s.Path + "|" + s.Pattern
 	case SourceSyslog:
 		return "syslog|" + s.Proto + "|" + s.Addr
 	default:
@@ -91,6 +101,21 @@ func (r *Runtime) Validate(allowedRoots []string) error {
 			}
 			if !pathAllowed(s.Path, allowedRoots) {
 				return fmt.Errorf("sources[%d]: path %q is not under any allowed_log_roots entry", i, s.Path)
+			}
+		case SourceDir:
+			if strings.TrimSpace(s.Path) == "" {
+				return fmt.Errorf("sources[%d]: dir source requires \"path\"", i)
+			}
+			if !pathAllowed(s.Path, allowedRoots) {
+				return fmt.Errorf("sources[%d]: path %q is not under any allowed_log_roots entry", i, s.Path)
+			}
+			if s.Pattern != "" {
+				// Validate the glob pattern early so the settings UI
+				// surfaces a clear error instead of silently matching
+				// nothing.
+				if _, err := filepath.Match(s.Pattern, "probe"); err != nil {
+					return fmt.Errorf("sources[%d]: invalid pattern %q: %w", i, s.Pattern, err)
+				}
 			}
 		case SourceSyslog:
 			if strings.TrimSpace(s.Addr) == "" {

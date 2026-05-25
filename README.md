@@ -110,7 +110,7 @@ Each entry in `sources` describes one input. Common fields:
 | Field | Description |
 |---|---|
 | `name` | Human-readable label (optional) |
-| `type` | `file` or `syslog` |
+| `type` | `file`, `dir`, or `syslog` |
 | `format.engine` | `nginx`, `apache`, `custom`, or `auto` |
 | `format.preset` | For `nginx`/`apache`: e.g. `combined`, `common`, `vhost_combined` |
 | `format.pattern` | For `custom`: log pattern using Nginx-style `$variable` tokens |
@@ -121,6 +121,22 @@ File-source fields:
 |---|---|
 | `path` | Path to the live access log file |
 | `read_compressed` | If `true`, also import sibling `*.gz` files once on startup |
+
+Directory-source fields (`type: "dir"`):
+
+| Field | Description |
+|---|---|
+| `path` | Directory to scan |
+| `pattern` | Filename glob matched against the basename (e.g. `access*.log*`); empty matches every file |
+| `recursive` | If `true`, descend into subdirectories |
+| `read_compressed` | If `true`, also one-shot import any matching `*.gz` archives |
+
+Directory sources resume safely across restarts: per-file ingestion
+position (inode, offset, size, fingerprint) is tracked in the
+`file_state` table, so rotation (rename + recreate or copytruncate) is
+detected and never causes lines to be re-ingested or skipped. Plain
+files are live-tailed; compressed archives that match the glob are
+imported once when discovered and then ignored.
 
 Syslog-source fields:
 
