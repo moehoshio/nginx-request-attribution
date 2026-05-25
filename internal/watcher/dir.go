@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/moehoshio/web-request-attribution/internal/parser"
@@ -339,14 +338,4 @@ func isCompressed(path string) bool {
 	return strings.HasSuffix(path, ".gz") ||
 		strings.HasSuffix(path, ".bz2") ||
 		strings.HasSuffix(path, ".xz")
-}
-
-// fileInode returns the file's inode number on platforms that expose
-// it via syscall.Stat_t (Linux / macOS / *BSD). Elsewhere (Windows)
-// it returns 0; rotation detection then falls back to size+mtime.
-func fileInode(info os.FileInfo) uint64 {
-	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
-		return uint64(stat.Ino)
-	}
-	return 0
 }
