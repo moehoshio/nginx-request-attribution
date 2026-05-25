@@ -36,6 +36,17 @@ The current Apache support is log-file based only. A future iteration could:
 - [ ] Document `mod_log_config` snippets for streaming via syslog/`piped logs`.
 - [ ] Provide canned dashboards or filters keyed on Apache-specific fields.
 
+## Settings panel / runtime config
+
+- [x] `runtime_config` SQLite store with `Get` / `Set` / `Subscribe`.
+- [x] Watcher manager that hot-reloads sources when the store changes.
+- [x] `GET` / `PUT /api/config`, `POST /api/admin/restart` (admin + CSRF).
+- [x] One-click restart via `syscall.Exec` on Linux; clean exit fallback.
+- [x] Admin-only Settings tab in the dashboard with schema-driven source rows.
+- [x] Audit-log entries for `runtime_config` edits and restarts.
+- [ ] Per-field "restart-required" indicator in the form (only the whole
+      bootstrap section is currently flagged).
+
 ## Misc
 
 - [ ] CLI helper: `web-req-attr validate-config` to surface validation errors

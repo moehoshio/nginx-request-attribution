@@ -136,7 +136,7 @@ func main() {
 
 	// Settings panel API (admin-only). Includes the one-click restart
 	// endpoint used by the "Restart server" button in the UI.
-	cfgHandler := api.NewConfigHandler(rcStore, cfg.ListenAddr, cfg.DBPath, cfg.AllowedLogRoots)
+	cfgHandler := api.NewConfigHandler(rcStore, cfg.ListenAddr, cfg.DBPath, cfg.AllowedLogRoots, authSvc)
 	cfgHandler.RegisterRoutes(mux, authH.RequireAdmin)
 
 	// Static files (embedded web GUI)

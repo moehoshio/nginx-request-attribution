@@ -9,8 +9,8 @@ next"; smaller deferred items live in [`TODO.md`](./TODO.md).
 | Phase | Title | Status |
 |------:|-------|--------|
 | 1 | Rename + parser refactor (Nginx / Apache / custom) | ✅ done |
-| 2 | Account system (users, sessions, login, CSRF) | 🚧 in progress |
-| 3 | Settings panel + one-click restart | ⏳ planned |
+| 2 | Account system (users, sessions, login, CSRF) | ✅ done |
+| 3 | Settings panel + one-click restart | ✅ done |
 | 4 | Directory watcher (recursive scan, rotation tracking) | ⏳ planned |
 | 5 | Documentation / screenshots / integration tests | ⏳ planned |
 
@@ -59,25 +59,33 @@ be exposed to a network without leaking request data.
 - **Tests**: hashing round-trip, session create/validate/expire,
   middleware allow / deny, bootstrap idempotency.
 
-## Phase 3 — Settings panel + one-click restart
+## Phase 3 — Settings panel + one-click restart (shipped)
 
-Goal: move runtime configuration into the database and edit it from
-the UI; only true bootstrap fields stay in `config.json`.
+Runtime configuration (sources, keywords, watch toggle) lives in the
+`runtime_config` SQLite row and is edited via the admin-only **Settings**
+tab. Bootstrap fields (`listen_addr`, `db_path`, `auth.bootstrap_admin`,
+`allowed_log_roots`) stay in `config.json` and still require a restart;
+the panel surfaces them as read-only context.
 
-- `config.json` keeps: `db_path`, `listen_addr`,
-  `auth.bootstrap_admin`, `allowed_log_roots`.
-- Everything else (sources, keywords, watch toggle, …) moves to a
-  `runtime_config` table, exposed via a `ConfigStore` that supports
-  subscribe / change-notification.
-- Watcher manager subscribes to source changes and hot-reloads:
-  start new sources, stop removed ones, restart changed ones.
-- API: `GET /api/config`, `PUT /api/config` (admin, CSRF-protected),
-  `POST /api/admin/restart` for fields that genuinely need a process
-  restart (e.g. `listen_addr`). Restart uses `os.Executable()` +
-  `syscall.Exec` on Linux; under Docker / systemd the orchestrator
-  brings the process back. Both paths documented.
-- UI: schema-driven form; fields that require restart are marked, and
-  a "Restart now" button is shown when any are pending.
+- `internal/runtimeconfig` exposes a `Store` with `Get` / `Set` /
+  `Subscribe`. Values are persisted as a JSON blob in a single-row table.
+- `internal/watcher.Manager` subscribes to the store and diffs the
+  running set of file / syslog sources: new sources start, removed
+  sources stop, changed sources restart. Toggling `watch` off tears
+  everything down; flipping it back on rebuilds the set.
+- `allowed_log_roots` is enforced at validation time so a settings edit
+  cannot point a `file` source at a path outside the configured roots
+  (`..` traversal is normalised out by `filepath.Clean`/`filepath.Rel`).
+- API: `GET /api/config` returns `{runtime, bootstrap, schema}`;
+  `PUT /api/config` accepts a new `runtime` document; `POST
+  /api/admin/restart` re-execs the binary with `os.Executable()` +
+  `syscall.Exec` on Linux and falls back to `os.Exit(0)` everywhere
+  else so an orchestrator (Docker / systemd) can bring the process
+  back. Both endpoints require admin and CSRF.
+- UI: schema-driven Settings tab with per-source rows, "Add file /
+  syslog source" buttons, "Save", "Reload", and "Restart server"
+  buttons. Restart polls `/api/auth/me` until the server comes back
+  and then reloads.
 
 ## Phase 4 — Directory watcher
 

@@ -724,6 +724,7 @@
             <div class="tab active" data-tab="overview" onclick="switchTab('overview')"><span aria-hidden="true">📈</span> <span data-i18n="tab_overview"></span></div>
             <div class="tab" data-tab="requests" onclick="switchTab('requests')"><span aria-hidden="true">📋</span> <span data-i18n="tab_requests"></span></div>
             <div class="tab hidden" id="tabUsersHandle" data-tab="users" onclick="switchTab('users')"><span aria-hidden="true">👥</span> <span data-i18n="tab_users"></span></div>
+            <div class="tab hidden" id="tabSettingsHandle" data-tab="settings" onclick="switchTab('settings')"><span aria-hidden="true">⚙️</span> <span data-i18n="tab_settings"></span></div>
         </div>
 
         <div id="tab-overview" class="panel">
@@ -793,6 +794,46 @@
                     </thead>
                     <tbody id="usersBody"></tbody>
                 </table>
+            </div>
+        </div>
+
+        <div id="tab-settings" class="panel" style="display:none;">
+            <div id="settingsError" class="error" style="color: var(--danger); min-height: 18px; margin-bottom: 12px;"></div>
+            <div id="settingsStatus" style="min-height: 18px; margin-bottom: 12px; color: var(--success);"></div>
+
+            <h3 style="margin: 0 0 12px;" data-i18n="settings_bootstrap_title"></h3>
+            <p class="subtitle" data-i18n="settings_bootstrap_hint"></p>
+            <table class="users-table" style="margin-bottom: 24px;">
+                <tbody>
+                    <tr><th style="width:240px;" data-i18n="settings_listen_addr"></th><td id="bootstrapListenAddr"></td></tr>
+                    <tr><th data-i18n="settings_db_path"></th><td id="bootstrapDBPath"></td></tr>
+                    <tr><th data-i18n="settings_allowed_log_roots"></th><td id="bootstrapAllowedRoots"></td></tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin: 0 0 12px;" data-i18n="settings_runtime_title"></h3>
+
+            <div class="users-form" style="grid-template-columns: 200px 1fr;">
+                <label data-i18n="settings_watch"></label>
+                <div>
+                    <input type="checkbox" id="settingsWatch">
+                    <span class="subtitle" data-i18n="settings_watch_hint"></span>
+                </div>
+                <label data-i18n="settings_keywords"></label>
+                <input type="text" id="settingsKeywords" data-i18n-placeholder="settings_keywords_placeholder">
+            </div>
+
+            <h4 style="margin: 24px 0 12px;" data-i18n="settings_sources"></h4>
+            <div id="settingsSources"></div>
+            <div style="margin-top: 12px;">
+                <button class="btn btn-secondary" onclick="addSourceRow('file')" data-i18n="settings_add_file"></button>
+                <button class="btn btn-secondary" onclick="addSourceRow('syslog')" data-i18n="settings_add_syslog"></button>
+            </div>
+
+            <div style="margin-top: 24px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="saveSettings()" data-i18n="settings_save"></button>
+                <button class="btn btn-secondary" onclick="loadSettings()" data-i18n="settings_reload"></button>
+                <button class="btn btn-secondary" onclick="confirmRestart()" data-i18n="settings_restart"></button>
             </div>
         </div>
     </div>
@@ -869,7 +910,39 @@
                 domain_placeholder: '例如 example.com',
                 query_placeholder: '例如 id=123',
                 status_placeholder: '例如 200',
-                keyword_placeholder: '關鍵詞'
+                keyword_placeholder: '關鍵詞',
+                tab_settings: '設定',
+                settings_bootstrap_title: '啟動設定（唯讀，需重新啟動）',
+                settings_bootstrap_hint: '這些欄位由 config.json 提供，修改後請點擊「重新啟動伺服器」。',
+                settings_listen_addr: '監聽位址',
+                settings_db_path: '資料庫路徑',
+                settings_allowed_log_roots: '允許的日誌根路徑',
+                settings_any: '（任意）',
+                settings_runtime_title: '執行時設定（即時生效）',
+                settings_watch: '啟用 Watch',
+                settings_watch_hint: '關閉後將不會即時讀取新的日誌行。',
+                settings_keywords: '追蹤關鍵字',
+                settings_keywords_placeholder: '以逗號分隔，例如 login, admin',
+                settings_sources: '日誌來源',
+                settings_source_name: '名稱',
+                settings_source_type: '類型',
+                settings_path: '檔案路徑',
+                settings_read_compressed: '讀取輪替的 .gz 檔',
+                settings_addr: '位址',
+                settings_proto: '通訊協定',
+                settings_engine: '解析引擎',
+                settings_preset: '預設格式',
+                settings_pattern: '自訂格式 pattern',
+                settings_add_file: '新增檔案來源',
+                settings_add_syslog: '新增 Syslog 來源',
+                settings_remove: '移除',
+                settings_save: '儲存',
+                settings_reload: '重新載入',
+                settings_restart: '重新啟動伺服器',
+                settings_restart_confirm: '即將重新啟動伺服器，已連線會中斷數秒。是否繼續？',
+                settings_restarting: '重新啟動中…',
+                settings_restart_timeout: '重新啟動逾時，請稍後重試。',
+                settings_saved: '已儲存。'
             },
             en: {
                 filters_title: 'Filters',
@@ -941,7 +1014,39 @@
                 domain_placeholder: 'e.g. example.com',
                 query_placeholder: 'e.g. id=123',
                 status_placeholder: 'e.g. 200',
-                keyword_placeholder: 'keyword'
+                keyword_placeholder: 'keyword',
+                tab_settings: 'Settings',
+                settings_bootstrap_title: 'Bootstrap settings (read-only, restart required)',
+                settings_bootstrap_hint: 'These fields come from config.json; click “Restart server” after editing.',
+                settings_listen_addr: 'Listen address',
+                settings_db_path: 'Database path',
+                settings_allowed_log_roots: 'Allowed log roots',
+                settings_any: '(any)',
+                settings_runtime_title: 'Runtime settings (applied immediately)',
+                settings_watch: 'Enable watch',
+                settings_watch_hint: 'When off, no new log lines are ingested.',
+                settings_keywords: 'Tracked keywords',
+                settings_keywords_placeholder: 'comma-separated, e.g. login, admin',
+                settings_sources: 'Log sources',
+                settings_source_name: 'Name',
+                settings_source_type: 'Type',
+                settings_path: 'Path',
+                settings_read_compressed: 'Import rotated .gz on start',
+                settings_addr: 'Address',
+                settings_proto: 'Protocol',
+                settings_engine: 'Parser engine',
+                settings_preset: 'Preset',
+                settings_pattern: 'Custom pattern',
+                settings_add_file: 'Add file source',
+                settings_add_syslog: 'Add syslog source',
+                settings_remove: 'Remove',
+                settings_save: 'Save',
+                settings_reload: 'Reload',
+                settings_restart: 'Restart server',
+                settings_restart_confirm: 'About to restart the server. Connected sessions will drop for a few seconds. Continue?',
+                settings_restarting: 'Restarting…',
+                settings_restart_timeout: 'Restart timed out. Please retry shortly.',
+                settings_saved: 'Saved.'
             },
             'zh-CN': {
                 filters_title: '筛选条件',
@@ -1013,7 +1118,39 @@
                 domain_placeholder: '例如 example.com',
                 query_placeholder: '例如 id=123',
                 status_placeholder: '例如 200',
-                keyword_placeholder: '关键词'
+                keyword_placeholder: '关键词',
+                tab_settings: '设置',
+                settings_bootstrap_title: '启动设置（只读，需重启）',
+                settings_bootstrap_hint: '这些字段来自 config.json，修改后请点击「重启服务器」。',
+                settings_listen_addr: '监听地址',
+                settings_db_path: '数据库路径',
+                settings_allowed_log_roots: '允许的日志根路径',
+                settings_any: '（任意）',
+                settings_runtime_title: '运行时设置（即时生效）',
+                settings_watch: '启用 Watch',
+                settings_watch_hint: '关闭后将不再读取新日志。',
+                settings_keywords: '追踪关键词',
+                settings_keywords_placeholder: '用逗号分隔，例如 login, admin',
+                settings_sources: '日志来源',
+                settings_source_name: '名称',
+                settings_source_type: '类型',
+                settings_path: '文件路径',
+                settings_read_compressed: '读取已轮替的 .gz 文件',
+                settings_addr: '地址',
+                settings_proto: '协议',
+                settings_engine: '解析引擎',
+                settings_preset: '预设格式',
+                settings_pattern: '自定义 pattern',
+                settings_add_file: '新增文件来源',
+                settings_add_syslog: '新增 Syslog 来源',
+                settings_remove: '移除',
+                settings_save: '保存',
+                settings_reload: '重新加载',
+                settings_restart: '重启服务器',
+                settings_restart_confirm: '即将重启服务器，已连接的会话会中断数秒。继续吗？',
+                settings_restarting: '重启中…',
+                settings_restart_timeout: '重启超时，请稍后重试。',
+                settings_saved: '已保存。'
             },
             ja: {
                 filters_title: 'フィルター',
@@ -1085,7 +1222,39 @@
                 domain_placeholder: '例: example.com',
                 query_placeholder: '例: id=123',
                 status_placeholder: '例: 200',
-                keyword_placeholder: 'キーワード'
+                keyword_placeholder: 'キーワード',
+                tab_settings: '設定',
+                settings_bootstrap_title: '起動設定（読み取り専用、再起動が必要）',
+                settings_bootstrap_hint: 'config.json から読み込まれます。変更後は「サーバー再起動」を押してください。',
+                settings_listen_addr: '待受アドレス',
+                settings_db_path: 'DB パス',
+                settings_allowed_log_roots: '許可されたログルート',
+                settings_any: '（任意）',
+                settings_runtime_title: 'ランタイム設定（即時反映）',
+                settings_watch: 'Watch を有効化',
+                settings_watch_hint: 'オフにすると新しいログを取り込みません。',
+                settings_keywords: '追跡キーワード',
+                settings_keywords_placeholder: 'カンマ区切り、例: login, admin',
+                settings_sources: 'ログソース',
+                settings_source_name: '名前',
+                settings_source_type: 'タイプ',
+                settings_path: 'パス',
+                settings_read_compressed: 'ローテートされた .gz を起動時に取り込む',
+                settings_addr: 'アドレス',
+                settings_proto: 'プロトコル',
+                settings_engine: 'パーサエンジン',
+                settings_preset: 'プリセット',
+                settings_pattern: 'カスタムパターン',
+                settings_add_file: 'ファイルソース追加',
+                settings_add_syslog: 'Syslog ソース追加',
+                settings_remove: '削除',
+                settings_save: '保存',
+                settings_reload: '再読み込み',
+                settings_restart: 'サーバー再起動',
+                settings_restart_confirm: 'サーバーを再起動します。接続中のセッションは数秒切断されます。続行しますか？',
+                settings_restarting: '再起動中…',
+                settings_restart_timeout: '再起動がタイムアウトしました。後で再試行してください。',
+                settings_saved: '保存しました。'
             }
         };
 
@@ -1224,8 +1393,10 @@
             document.getElementById('tab-overview').style.display = tab === 'overview' ? 'block' : 'none';
             document.getElementById('tab-requests').style.display = tab === 'requests' ? 'block' : 'none';
             document.getElementById('tab-users').style.display = tab === 'users' ? 'block' : 'none';
+            document.getElementById('tab-settings').style.display = tab === 'settings' ? 'block' : 'none';
             if (tab === 'requests') loadRequests();
             if (tab === 'users') loadUsers();
+            if (tab === 'settings') loadSettings();
         }
 
         async function loadStats() {
@@ -1387,6 +1558,7 @@
             document.getElementById('authOverlay').classList.remove('hidden');
             document.getElementById('userMenu').classList.add('hidden');
             document.getElementById('tabUsersHandle').classList.add('hidden');
+            document.getElementById('tabSettingsHandle').classList.add('hidden');
             currentUser = null;
         }
 
@@ -1402,8 +1574,10 @@
             document.getElementById('userMenuRole').textContent = u.role;
             if (u.role === 'admin') {
                 document.getElementById('tabUsersHandle').classList.remove('hidden');
+                document.getElementById('tabSettingsHandle').classList.remove('hidden');
             } else {
                 document.getElementById('tabUsersHandle').classList.add('hidden');
+                document.getElementById('tabSettingsHandle').classList.add('hidden');
             }
         }
 
@@ -1547,6 +1721,191 @@
             if (!confirm(t('users_confirm_delete'))) return;
             await authFetch('/api/users/' + id, { method: 'DELETE' });
             loadUsers();
+        }
+
+        // ---- Settings panel (admin only) ------------------------------------
+
+        let settingsSchema = null;
+        let settingsSources = [];
+
+        function escapeAttr(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        }
+
+        function renderSourceRows() {
+            const host = document.getElementById('settingsSources');
+            const engineOpts = (settingsSchema && settingsSchema.engines || ['auto','nginx','apache','custom']);
+            const protoOpts = (settingsSchema && settingsSchema.syslog_protos || ['udp','tcp']);
+            host.innerHTML = settingsSources.map(function(s, i) {
+                const presets = (s.format && s.format.engine === 'apache'
+                    ? (settingsSchema && settingsSchema.apache_presets || ['common','combined','vhost_combined'])
+                    : (settingsSchema && settingsSchema.nginx_presets || ['combined','vhost_combined']));
+                const engineSelect = engineOpts.map(function(e) {
+                    return '<option value="' + e + '"' + (s.format && s.format.engine === e ? ' selected' : '') + '>' + e + '</option>';
+                }).join('');
+                const presetSelect = presets.map(function(p) {
+                    return '<option value="' + p + '"' + (s.format && s.format.preset === p ? ' selected' : '') + '>' + p + '</option>';
+                }).join('');
+                const protoSelect = protoOpts.map(function(p) {
+                    return '<option value="' + p + '"' + (s.proto === p ? ' selected' : '') + '>' + p + '</option>';
+                }).join('');
+                const isFile = s.type === 'file';
+                const isCustom = s.format && s.format.engine === 'custom';
+                return '<div class="source-row" data-i="' + i + '" style="border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; margin-bottom:10px;">' +
+                    '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; align-items:end;">' +
+                    '<div><label data-i18n="settings_source_name"></label><input type="text" data-field="name" value="' + escapeAttr(s.name || '') + '"></div>' +
+                    '<div><label data-i18n="settings_source_type"></label><div style="padding:6px;">' + escapeHtml(s.type) + '</div></div>' +
+                    (isFile
+                        ? ('<div style="grid-column:span 2;"><label data-i18n="settings_path"></label><input type="text" data-field="path" value="' + escapeAttr(s.path || '') + '"></div>' +
+                           '<div><label><input type="checkbox" data-field="read_compressed"' + (s.read_compressed ? ' checked' : '') + '> <span data-i18n="settings_read_compressed"></span></label></div>')
+                        : ('<div><label data-i18n="settings_addr"></label><input type="text" data-field="addr" value="' + escapeAttr(s.addr || '') + '"></div>' +
+                           '<div><label data-i18n="settings_proto"></label><select data-field="proto">' + protoSelect + '</select></div>')) +
+                    '<div><label data-i18n="settings_engine"></label><select data-field="engine">' + engineSelect + '</select></div>' +
+                    (isCustom
+                        ? '<div style="grid-column:span 2;"><label data-i18n="settings_pattern"></label><input type="text" data-field="pattern" value="' + escapeAttr(s.format && s.format.pattern || '') + '"></div>'
+                        : '<div><label data-i18n="settings_preset"></label><select data-field="preset">' + presetSelect + '</select></div>') +
+                    '<div><button class="btn btn-secondary" onclick="removeSourceRow(' + i + ')" data-i18n="settings_remove"></button></div>' +
+                    '</div></div>';
+            }).join('');
+            // Wire change listeners so edits flow back into settingsSources.
+            host.querySelectorAll('.source-row').forEach(function(row) {
+                const i = parseInt(row.getAttribute('data-i'), 10);
+                row.querySelectorAll('[data-field]').forEach(function(el) {
+                    el.addEventListener('change', function() {
+                        const f = el.getAttribute('data-field');
+                        let v = el.type === 'checkbox' ? el.checked : el.value;
+                        const s = settingsSources[i];
+                        if (f === 'engine' || f === 'preset' || f === 'pattern') {
+                            s.format = s.format || {};
+                            s.format[f] = v;
+                            // Engine swap can change which preset list is valid;
+                            // re-render so the dropdown updates.
+                            if (f === 'engine') renderSourceRows();
+                        } else {
+                            s[f] = v;
+                        }
+                    });
+                });
+            });
+            applyLanguage();
+        }
+
+        function addSourceRow(type) {
+            settingsSources.push({
+                name: '',
+                type: type,
+                format: { engine: 'nginx', preset: 'combined' },
+                path: type === 'file' ? '' : undefined,
+                addr: type === 'syslog' ? ':1514' : undefined,
+                proto: type === 'syslog' ? 'udp' : undefined
+            });
+            renderSourceRows();
+        }
+
+        function removeSourceRow(i) {
+            settingsSources.splice(i, 1);
+            renderSourceRows();
+        }
+
+        async function loadSettings() {
+            const errEl = document.getElementById('settingsError');
+            const stEl = document.getElementById('settingsStatus');
+            errEl.textContent = '';
+            stEl.textContent = '';
+            const res = await authFetch('/api/config');
+            if (!res.ok) {
+                errEl.textContent = 'failed to load config';
+                return;
+            }
+            const data = await res.json();
+            settingsSchema = data.schema || null;
+            // Bootstrap (read-only).
+            const b = data.bootstrap || {};
+            document.getElementById('bootstrapListenAddr').textContent = b.listen_addr || '';
+            document.getElementById('bootstrapDBPath').textContent = b.db_path || '';
+            document.getElementById('bootstrapAllowedRoots').textContent = (b.allowed_log_roots || []).join(', ') || t('settings_any');
+            // Runtime fields.
+            const rc = data.runtime || {};
+            document.getElementById('settingsWatch').checked = !!rc.watch;
+            document.getElementById('settingsKeywords').value = (rc.keywords || []).join(', ');
+            // Deep-copy sources so editing the form doesn't mutate the server snapshot.
+            settingsSources = JSON.parse(JSON.stringify(rc.sources || []));
+            renderSourceRows();
+        }
+
+        function collectRuntimePayload() {
+            const watch = document.getElementById('settingsWatch').checked;
+            const kwRaw = document.getElementById('settingsKeywords').value || '';
+            const keywords = kwRaw.split(',').map(function(s){return s.trim();}).filter(function(s){return s.length > 0;});
+            // Strip empty string fields that the server doesn't want
+            // (e.g. addr on a file source from a stale form).
+            const sources = settingsSources.map(function(s) {
+                const out = { name: s.name || '', type: s.type, format: {} };
+                out.format.engine = (s.format && s.format.engine) || 'auto';
+                if (out.format.engine === 'custom') {
+                    out.format.pattern = (s.format && s.format.pattern) || '';
+                } else {
+                    out.format.preset = (s.format && s.format.preset) || '';
+                }
+                if (s.type === 'file') {
+                    out.path = s.path || '';
+                    out.read_compressed = !!s.read_compressed;
+                } else if (s.type === 'syslog') {
+                    out.addr = s.addr || '';
+                    out.proto = s.proto || 'udp';
+                }
+                return out;
+            });
+            return { watch: watch, keywords: keywords, sources: sources };
+        }
+
+        async function saveSettings() {
+            const errEl = document.getElementById('settingsError');
+            const stEl = document.getElementById('settingsStatus');
+            errEl.textContent = '';
+            stEl.textContent = '';
+            const payload = collectRuntimePayload();
+            const res = await authFetch('/api/config', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(function(){return {};});
+                errEl.textContent = data.error || 'save failed';
+                return;
+            }
+            stEl.textContent = t('settings_saved');
+        }
+
+        async function confirmRestart() {
+            if (!confirm(t('settings_restart_confirm'))) return;
+            const stEl = document.getElementById('settingsStatus');
+            const errEl = document.getElementById('settingsError');
+            errEl.textContent = '';
+            stEl.textContent = t('settings_restarting');
+            try {
+                await authFetch('/api/admin/restart', { method: 'POST' });
+            } catch (e) {
+                // Connection dropping mid-restart is expected.
+            }
+            // Poll for the server to come back, then reload.
+            const start = Date.now();
+            (function poll() {
+                if (Date.now() - start > 30000) {
+                    errEl.textContent = t('settings_restart_timeout');
+                    return;
+                }
+                fetch('/api/auth/me', { credentials: 'same-origin' }).then(function(r) {
+                    if (r.ok || r.status === 401) {
+                        window.location.reload();
+                    } else {
+                        setTimeout(poll, 1000);
+                    }
+                }).catch(function() {
+                    setTimeout(poll, 1000);
+                });
+            })();
         }
 
         document.addEventListener('DOMContentLoaded', function() {

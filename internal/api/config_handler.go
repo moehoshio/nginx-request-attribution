@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"syscall"
 
+	"github.com/moehoshio/web-request-attribution/internal/auth"
 	"github.com/moehoshio/web-request-attribution/internal/runtimeconfig"
 )
 
@@ -21,16 +23,20 @@ type ConfigHandler struct {
 	allowedLogRoots []string
 	listenAddr      string
 	dbPath          string
+	auth            *auth.Service
 }
 
 // NewConfigHandler wires the runtimeconfig store and the bootstrap
-// fields together so the API can return both in a single payload.
-func NewConfigHandler(store *runtimeconfig.Store, listenAddr, dbPath string, allowedLogRoots []string) *ConfigHandler {
+// fields together so the API can return both in a single payload. The
+// auth service is optional; when non-nil, edits and restart requests
+// are written to audit_log.
+func NewConfigHandler(store *runtimeconfig.Store, listenAddr, dbPath string, allowedLogRoots []string, authSvc *auth.Service) *ConfigHandler {
 	return &ConfigHandler{
 		store:           store,
 		allowedLogRoots: allowedLogRoots,
 		listenAddr:      listenAddr,
 		dbPath:          dbPath,
+		auth:            authSvc,
 	}
 }
 
@@ -95,6 +101,7 @@ func (h *ConfigHandler) handleConfig(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		h.audit(r, "config_update", fmt.Sprintf("sources=%d watch=%v keywords=%d", len(rc.Sources), rc.Watch, len(rc.Keywords)))
 		writeJSONStatus(w, http.StatusOK, map[string]interface{}{
 			"status":  "ok",
 			"runtime": h.store.Get(),
@@ -123,6 +130,7 @@ func (h *ConfigHandler) handleRestart(w http.ResponseWriter, r *http.Request) {
 	// Acknowledge before flipping the table so the browser actually
 	// receives the response. The actual re-exec runs in a goroutine
 	// after a short defer so flush has time to happen.
+	h.audit(r, "server_restart", "")
 	writeJSONStatus(w, http.StatusAccepted, map[string]string{"status": "restarting"})
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
@@ -146,6 +154,35 @@ func writeJSONStatus(w http.ResponseWriter, status int, v interface{}) {
 
 func writeJSONError(w http.ResponseWriter, status int, msg string) {
 	writeJSONStatus(w, status, map[string]string{"error": msg})
+}
+
+// audit best-effort writes to the audit_log via the auth service.
+// Missing user / service is silently tolerated so audit never breaks
+// the user-visible action.
+func (h *ConfigHandler) audit(r *http.Request, action, detail string) {
+	if h.auth == nil {
+		return
+	}
+	u := auth.UserFromContext(r.Context())
+	var uid *int64
+	username := ""
+	if u != nil {
+		uid = &u.ID
+		username = u.Username
+	}
+	_ = h.auth.Audit(uid, action, username, clientIP(r), detail)
+}
+
+// clientIP duplicates the heuristic in auth.clientIP so api doesn't
+// have to import an unexported symbol.
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if i := strings.Index(xff, ","); i >= 0 {
+			return strings.TrimSpace(xff[:i])
+		}
+		return strings.TrimSpace(xff)
+	}
+	return r.RemoteAddr
 }
 
 // performRestart re-execs the current binary on Linux. Anywhere else
