@@ -168,8 +168,9 @@ Supported variables: `$remote_addr`, `$remote_user`, `$time_local`, `$msec`,
 `$body_bytes_sent`, `$bytes_sent`, `$http_referer`, `$http_user_agent`,
 `$http_host`, `$host`, `$server_name`, `$request_time`,
 `$upstream_response_time`. Unknown variables are tolerated (matched and
-discarded). Apache `%`-style LogFormat tokens are not yet supported — see
-[`docs/TODO.md`](docs/TODO.md).
+discarded). See [`docs/custom-format-variables.md`](docs/custom-format-variables.md)
+for the full reference. Apache `%`-style LogFormat tokens are not yet
+supported — see [`docs/TODO.md`](docs/TODO.md).
 
 ### Compressed logs
 

@@ -11,8 +11,8 @@ next"; smaller deferred items live in [`TODO.md`](./TODO.md).
 | 1 | Rename + parser refactor (Nginx / Apache / custom) | ✅ done |
 | 2 | Account system (users, sessions, login, CSRF) | ✅ done |
 | 3 | Settings panel + one-click restart | ✅ done |
-| 4 | Directory watcher (recursive scan, rotation tracking) | ⏳ planned |
-| 5 | Documentation / screenshots / integration tests | ⏳ planned |
+| 4 | Directory watcher (recursive scan, rotation tracking) | ✅ done |
+| 5 | Documentation / screenshots / integration tests | ✅ done |
 
 ## Phase 1 — Rename + parser refactor (shipped)
 
