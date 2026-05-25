@@ -23,20 +23,35 @@
 
 ## クイックスタート
 
-### 方法1：直接実行
+### 方法1：Release からダウンロード
+
+[最新の GitHub Release](https://github.com/moehoshio/web-request-attribution/releases/latest) から、利用するプラットフォーム向けのビルド済みバイナリをダウンロードしてください：
+
+| プラットフォーム | アセット |
+|---|---|
+| Linux x86_64 | `web-req-attr-linux-amd64` |
+| Linux ARM64 | `web-req-attr-linux-arm64` |
+| macOS Intel | `web-req-attr-darwin-amd64` |
+| macOS Apple Silicon | `web-req-attr-darwin-arm64` |
+| Windows x86_64 | `web-req-attr-windows-amd64.exe` |
 
 ```bash
-# ビルド
-go build -o web-req-attr ./cmd/
+# Linux/macOS の例
+chmod +x web-req-attr-linux-amd64
+./web-req-attr-linux-amd64 -config config.json
 
 # 既存ログのインポート
-./web-req-attr -import /var/log/nginx/access.log
+./web-req-attr-linux-amd64 -import /var/log/nginx/access.log
+```
 
-# サービス起動（ログ監視 + Web GUI）
+### 方法2：ソースからビルド
+
+```bash
+go build -o web-req-attr ./cmd/
 ./web-req-attr -config config.json
 ```
 
-### 方法2：Docker デプロイ
+### 方法3：Docker デプロイ
 
 ```bash
 # ワンクリック起動
