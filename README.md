@@ -23,20 +23,35 @@ A lightweight web server (Nginx / Apache) access log analytics tool with statist
 
 ## Quick Start
 
-### Option 1: Direct Run
+### Option 1: Download from Release
+
+Download the prebuilt binary for your platform from the [latest GitHub Release](https://github.com/moehoshio/web-request-attribution/releases/latest):
+
+| Platform | Asset |
+|---|---|
+| Linux x86_64 | `web-req-attr-linux-amd64` |
+| Linux ARM64 | `web-req-attr-linux-arm64` |
+| macOS Intel | `web-req-attr-darwin-amd64` |
+| macOS Apple Silicon | `web-req-attr-darwin-arm64` |
+| Windows x86_64 | `web-req-attr-windows-amd64.exe` |
 
 ```bash
-# Build
-go build -o web-req-attr ./cmd/
+# Linux/macOS example
+chmod +x web-req-attr-linux-amd64
+./web-req-attr-linux-amd64 -config config.json
 
 # Import existing logs
-./web-req-attr -import /var/log/nginx/access.log
+./web-req-attr-linux-amd64 -import /var/log/nginx/access.log
+```
 
-# Start service (log monitoring + Web GUI)
+### Option 2: Build from Source
+
+```bash
+go build -o web-req-attr ./cmd/
 ./web-req-attr -config config.json
 ```
 
-### Option 2: Docker Deploy
+### Option 3: Docker Deploy
 
 ```bash
 # One-click start

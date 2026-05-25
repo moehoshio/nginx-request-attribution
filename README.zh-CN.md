@@ -23,20 +23,35 @@
 
 ## 快速开始
 
-### 方式一：直接执行
+### 方式一：从 Release 下载
+
+从 [最新 GitHub Release](https://github.com/moehoshio/web-request-attribution/releases/latest) 下载适合平台的预编译二进制文件：
+
+| 平台 | 文件 |
+|---|---|
+| Linux x86_64 | `web-req-attr-linux-amd64` |
+| Linux ARM64 | `web-req-attr-linux-arm64` |
+| macOS Intel | `web-req-attr-darwin-amd64` |
+| macOS Apple Silicon | `web-req-attr-darwin-arm64` |
+| Windows x86_64 | `web-req-attr-windows-amd64.exe` |
 
 ```bash
-# 编译
-go build -o web-req-attr ./cmd/
+# Linux/macOS 示例
+chmod +x web-req-attr-linux-amd64
+./web-req-attr-linux-amd64 -config config.json
 
 # 导入既有日志
-./web-req-attr -import /var/log/nginx/access.log
+./web-req-attr-linux-amd64 -import /var/log/nginx/access.log
+```
 
-# 启动服务（监控日志 + Web GUI）
+### 方式二：从源码编译
+
+```bash
+go build -o web-req-attr ./cmd/
 ./web-req-attr -config config.json
 ```
 
-### 方式二：Docker 部署
+### 方式三：Docker 部署
 
 ```bash
 # 一键启动
