@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/moehoshio/web-request-attribution/internal/parser"
+	"github.com/moehoshio/web-request-attribution/internal/runtimeconfig"
 )
 
 // SourceType identifies the kind of log source.
@@ -37,22 +38,39 @@ type Source struct {
 	Proto string `json:"proto,omitempty"` // "udp", "tcp", or "both"
 }
 
-// Config is the top-level application configuration.
+// Config is the top-level application configuration. Only the fields
+// in this struct (listen_addr, db_path, auth.bootstrap_admin,
+// allowed_log_roots) are considered bootstrap config: they are read
+// once at startup and changing them requires a restart. Runtime-tunable
+// fields (sources, keywords, watch toggle) are stored in the database
+// and edited via the settings panel; see docs/ROADMAP.md (Phase 3).
+//
+// For convenience, the bootstrap file may also contain initial values
+// for the runtime fields; they are used to seed the database on first
+// launch and ignored thereafter.
 type Config struct {
 	// HTTP server listen address.
 	ListenAddr string `json:"listen_addr"`
 	// SQLite database path.
 	DBPath string `json:"db_path"`
-	// Whether to start watchers on launch. When false the server only serves
-	// the dashboard / API and does not ingest new lines.
+	// AllowedLogRoots restricts which filesystem prefixes the settings
+	// panel is allowed to point file sources at. Empty disables the
+	// check (anything goes). Operators exposing the dashboard to a
+	// network are strongly encouraged to set this.
+	AllowedLogRoots []string `json:"allowed_log_roots,omitempty"`
+	// Auth contains bootstrap settings for the account system. See
+	// docs/ROADMAP.md (Phase 2).
+	Auth AuthConfig `json:"auth"`
+
+	// --- runtime seed values (only used when the runtime_config row
+	// is empty, i.e. first launch). ---
+
+	// Whether to start watchers on launch.
 	Watch bool `json:"watch"`
 	// Keywords to track in request paths and query strings.
 	Keywords []string `json:"keywords"`
 	// Sources is the list of log inputs to ingest from.
 	Sources []Source `json:"sources"`
-	// Auth contains bootstrap settings for the account system. See
-	// docs/ROADMAP.md (Phase 2).
-	Auth AuthConfig `json:"auth"`
 }
 
 // AuthConfig holds settings consumed at startup by the auth package.
@@ -157,4 +175,30 @@ func (c *Config) Save(path string) error {
 		return err
 	}
 	return os.WriteFile(path, data, 0644)
+}
+
+// RuntimeSeed converts the bootstrap-file's runtime-tunable fields
+// (watch, keywords, sources) into a runtimeconfig.Runtime value. It is
+// only consulted when the runtime_config table is empty (first launch).
+func (c *Config) RuntimeSeed() runtimeconfig.Runtime {
+	srcs := make([]runtimeconfig.Source, 0, len(c.Sources))
+	for _, s := range c.Sources {
+		srcs = append(srcs, runtimeconfig.Source{
+			Name:           s.Name,
+			Type:           runtimeconfig.SourceType(s.Type),
+			Format:         s.Format,
+			Path:           s.Path,
+			ReadCompressed: s.ReadCompressed,
+			Addr:           s.Addr,
+			Proto:          s.Proto,
+		})
+	}
+	if c.Keywords == nil {
+		c.Keywords = []string{}
+	}
+	return runtimeconfig.Runtime{
+		Watch:    c.Watch,
+		Keywords: append([]string(nil), c.Keywords...),
+		Sources:  srcs,
+	}
 }

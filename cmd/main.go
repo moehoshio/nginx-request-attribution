@@ -21,6 +21,7 @@ import (
 	"github.com/moehoshio/web-request-attribution/internal/auth"
 	"github.com/moehoshio/web-request-attribution/internal/config"
 	"github.com/moehoshio/web-request-attribution/internal/parser"
+	"github.com/moehoshio/web-request-attribution/internal/runtimeconfig"
 	"github.com/moehoshio/web-request-attribution/internal/storage"
 	"github.com/moehoshio/web-request-attribution/internal/watcher"
 )
@@ -47,7 +48,9 @@ func main() {
 	}
 	defer store.Close()
 
-	// If import mode, process file and exit
+	// If import mode, process file and exit. Keywords come from the
+	// (persisted) runtime config so an import shares the same set as
+	// the live watcher pipeline.
 	if *importFile != "" {
 		p, err := parser.New(parser.FormatConfig{
 			Engine:  *importFormatEngine,
@@ -57,7 +60,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Invalid import format: %v", err)
 		}
-		count, err := importLogFile(store, *importFile, cfg.Keywords, p)
+		rc, err := runtimeconfig.New(store.DB(), cfg.RuntimeSeed())
+		if err != nil {
+			log.Fatalf("Failed to init runtime config: %v", err)
+		}
+		count, err := importLogFile(store, *importFile, rc.Get().Keywords, p)
 		if err != nil {
 			log.Fatalf("Import failed: %v", err)
 		}
@@ -69,11 +76,26 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if cfg.Watch {
-		if err := startSources(ctx, cfg, store); err != nil {
-			log.Fatalf("Failed to start sources: %v", err)
-		}
+	// Runtime config lives in the database from Phase 3 onwards. The
+	// file's sources/keywords/watch fields are only consulted on first
+	// launch to seed the row.
+	rcStore, err := runtimeconfig.New(store.DB(), cfg.RuntimeSeed())
+	if err != nil {
+		log.Fatalf("Failed to init runtime config: %v", err)
 	}
+
+	// Watcher manager owns source lifecycles. It subscribes to
+	// runtime-config changes so the settings panel's "Save" button
+	// can start/stop/restart sources without bouncing the process.
+	mgr := watcher.NewManager(ctx, store)
+	if err := mgr.Apply(rcStore.Get()); err != nil {
+		log.Printf("initial watcher apply: %v", err)
+	}
+	rcStore.Subscribe(func(rc runtimeconfig.Runtime) {
+		if err := mgr.Apply(rc); err != nil {
+			log.Printf("watcher reload: %v", err)
+		}
+	})
 
 	// Setup HTTP server
 	mux := http.NewServeMux()
@@ -112,6 +134,11 @@ func main() {
 	handler := api.NewHandler(store)
 	handler.RegisterRoutesWithMiddleware(mux, authH.RequireAuth)
 
+	// Settings panel API (admin-only). Includes the one-click restart
+	// endpoint used by the "Restart server" button in the UI.
+	cfgHandler := api.NewConfigHandler(rcStore, cfg.ListenAddr, cfg.DBPath, cfg.AllowedLogRoots, authSvc)
+	cfgHandler.RegisterRoutes(mux, authH.RequireAdmin)
+
 	// Static files (embedded web GUI)
 	staticFS, err := fs.Sub(staticFiles, "static")
 	if err != nil {
@@ -131,6 +158,7 @@ func main() {
 		<-sigCh
 		log.Println("Shutting down...")
 		cancel()
+		mgr.Stop()
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
 		server.Shutdown(shutdownCtx)
@@ -140,42 +168,6 @@ func main() {
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("Server error: %v", err)
 	}
-}
-
-func startSources(ctx context.Context, cfg *config.Config, store *storage.Store) error {
-	if len(cfg.Sources) == 0 {
-		log.Printf("No sources configured; server will run without ingestion.")
-		return nil
-	}
-	for i, src := range cfg.Sources {
-		p, err := parser.New(src.Format)
-		if err != nil {
-			return fmt.Errorf("sources[%d] %q: %w", i, src.Name, err)
-		}
-		switch src.Type {
-		case config.SourceFile:
-			fw := watcher.NewFileWatcher(store, src.Path, cfg.Keywords, p, src.ReadCompressed)
-			go func(name, path string) {
-				if err := fw.Watch(ctx); err != nil {
-					log.Printf("File watcher %q stopped: %v", name, err)
-				}
-			}(src.Name, src.Path)
-			log.Printf("File watcher started (%s) on %s [parser=%s]", src.Name, src.Path, p.Name())
-
-		case config.SourceSyslog:
-			sr := watcher.NewSyslogReceiver(store, src.Addr, src.Proto, cfg.Keywords, p)
-			go func(name, addr, proto string) {
-				if err := sr.Listen(ctx); err != nil {
-					log.Printf("Syslog receiver %q stopped: %v", name, err)
-				}
-			}(src.Name, src.Addr, src.Proto)
-			log.Printf("Syslog receiver started (%s) on %s (%s) [parser=%s]", src.Name, src.Addr, src.Proto, p.Name())
-
-		default:
-			return fmt.Errorf("sources[%d] %q: unknown type %q", i, src.Name, src.Type)
-		}
-	}
-	return nil
 }
 
 func importLogFile(store *storage.Store, path string, keywords []string, p parser.Parser) (int, error) {

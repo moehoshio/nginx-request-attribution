@@ -1,6 +1,17 @@
 {
   "listen_addr": ":8080",
   "db_path": "./data/stats.db",
+  "allowed_log_roots": ["/var/log"],
+  "auth": {
+    "bootstrap_admin": {
+      "username": "admin",
+      "password": "change-me-on-first-login"
+    },
+    "session_ttl_hours": 24,
+    "cookie_secure": false
+  },
+
+  "_comment": "The fields below are runtime-tunable: they are only read on the very first launch (to seed the runtime_config row) and edited via the Settings panel thereafter.",
   "watch": true,
   "keywords": ["login", "admin", "api", "search"],
   "sources": [
@@ -14,13 +25,5 @@
         "preset": "combined"
       }
     }
-  ],
-  "auth": {
-    "bootstrap_admin": {
-      "username": "admin",
-      "password": "change-me-on-first-login"
-    },
-    "session_ttl_hours": 24,
-    "cookie_secure": false
-  }
+  ]
 }
