@@ -68,7 +68,18 @@ docker run -d \
 
 ## Configuration
 
-Create `config.json`:
+All configuration is supplied via **`config.json`** and command-line
+flags only — no environment variables are read. Running the binary in
+a directory without a `config.json` will automatically create one with
+safe defaults (no sources, watching disabled) so you can edit it from
+the **Settings** tab in the UI without touching a terminal.
+
+Until the first user account is created the dashboard runs in
+**no-account mode**: anyone reaching the UI can administer the server.
+Create your first user from the **Users** tab (or seed one via
+`auth.bootstrap_admin`) to require login.
+
+Example `config.json`:
 
 ```json
 {
@@ -102,7 +113,7 @@ Create `config.json`:
 |---|---|---|
 | `listen_addr` | HTTP server listen address | `:8080` |
 | `db_path` | SQLite database file path | `./data/stats.db` |
-| `watch` | Enable real-time log monitoring | `true` |
+| `watch` | Enable real-time log monitoring | `false` |
 | `keywords` | List of keywords to track | `[]` |
 | `sources` | List of log sources to ingest from (see below) | `[]` |
 | `auth` | Account-system settings (see [Authentication](#authentication)) | – |

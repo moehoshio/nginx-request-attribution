@@ -37,9 +37,26 @@ func main() {
 	importPattern := flag.String("import-pattern", "", "custom pattern for -import when -import-format=custom")
 	flag.Parse()
 
+	// Auto-generate a starter config file when none exists at the
+	// configured path. This makes "run the binary in an empty dir"
+	// just work — the operator gets a file they can edit instead of
+	// invisible in-memory defaults. config.Load() will write the file
+	// itself; we only log here so the operator notices.
+	configAutoCreated := false
+	if _, err := os.Stat(*configPath); os.IsNotExist(err) {
+		configAutoCreated = true
+	}
+
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
+	}
+	if configAutoCreated {
+		if _, err := os.Stat(*configPath); err == nil {
+			log.Printf("No config file found; wrote starter %s. Configure log sources via the settings panel.", *configPath)
+		} else {
+			log.Printf("No config file found and could not write %s (%v); running with in-memory defaults.", *configPath, err)
+		}
 	}
 
 	store, err := storage.New(cfg.DBPath)
@@ -120,11 +137,11 @@ func main() {
 			log.Printf("Bootstrap admin user %q created", ba.Username)
 		}
 	} else {
-		// Operators who skip bootstrap_admin should know that no
-		// account exists yet; otherwise the UI will return 401 for
-		// every API call with no way in.
+		// Operators who skip bootstrap_admin should know the server
+		// is running in no-account mode: any visitor to the UI acts
+		// as administrator until the first user is created.
 		if n, _ := authSvc.CountUsers(); n == 0 {
-			log.Printf("WARNING: no users exist and config.auth.bootstrap_admin is unset; nobody can log in.")
+			log.Printf("Running in no-account mode: no users exist, so every request is treated as administrator. Create the first user from the Users tab to require login.")
 		}
 	}
 	authH := auth.NewHandler(authSvc)

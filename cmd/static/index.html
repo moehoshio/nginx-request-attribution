@@ -627,6 +627,20 @@
     </div>
 
     <div class="container">
+        <!-- First-run / no-account-mode banner. Shown when /api/auth/me
+             reports the server has zero users (so it's running in
+             "no-account mode") or when no log sources are configured. -->
+        <div id="setupBanner" class="hidden" style="background: var(--bg-secondary); border: 1px solid var(--border); border-left: 4px solid var(--accent, #5b8def); border-radius: var(--radius-sm); padding: 16px 20px; margin: 16px 0; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+            <div style="font-size: 28px;" aria-hidden="true">🚀</div>
+            <div style="flex: 1; min-width: 260px;">
+                <div id="setupBannerTitle" style="font-weight: 600; margin-bottom: 4px;" data-i18n="setup_banner_title"></div>
+                <div id="setupBannerBody" class="subtitle" data-i18n="setup_banner_body"></div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="openSetup()" data-i18n="setup_banner_btn"></button>
+                <button class="btn btn-secondary" onclick="dismissSetupBanner()" data-i18n="setup_banner_dismiss"></button>
+            </div>
+        </div>
         <div class="header">
             <h1>📊 Web Request Attribution</h1>
             <div class="header-actions">
@@ -946,7 +960,16 @@
                 settings_restart_confirm: '即將重新啟動伺服器，已連線會中斷數秒。是否繼續？',
                 settings_restarting: '重新啟動中…',
                 settings_restart_timeout: '重新啟動逾時，請稍後重試。',
-                settings_saved: '已儲存。'
+                settings_saved: '已儲存。',
+                setup_banner_title: '尚未完成設定',
+                setup_banner_body: '請至「設定」頁新增至少一個日誌來源。目前未配置任何來源，因此尚無資料可分析。',
+                setup_banner_btn: '前往設定',
+                setup_banner_dismiss: '稍後再說',
+                setup_banner_noaccount_title: '無帳戶模式',
+                setup_banner_noaccount_body: '尚未建立任何使用者帳戶。任何能存取此頁的人皆為管理員。請於「使用者」頁建立第一個帳戶以啟用登入。',
+                setup_banner_noaccount_btn: '建立首個帳戶',
+                user_anonymous: '匿名',
+                role_setup: '初始設定'
             },
             en: {
                 filters_title: 'Filters',
@@ -1053,7 +1076,16 @@
                 settings_restart_confirm: 'About to restart the server. Connected sessions will drop for a few seconds. Continue?',
                 settings_restarting: 'Restarting…',
                 settings_restart_timeout: 'Restart timed out. Please retry shortly.',
-                settings_saved: 'Saved.'
+                settings_saved: 'Saved.',
+                setup_banner_title: 'Setup not finished',
+                setup_banner_body: 'No log sources are configured yet, so there is nothing to analyse. Open the Settings tab to add one.',
+                setup_banner_btn: 'Open settings',
+                setup_banner_dismiss: 'Dismiss',
+                setup_banner_noaccount_title: 'No-account mode',
+                setup_banner_noaccount_body: 'No user account exists yet — anyone reaching this page acts as administrator. Create the first account from the Users tab to require login.',
+                setup_banner_noaccount_btn: 'Create first account',
+                user_anonymous: 'anonymous',
+                role_setup: 'setup'
             },
             'zh-CN': {
                 filters_title: '筛选条件',
@@ -1160,7 +1192,16 @@
                 settings_restart_confirm: '即将重启服务器，已连接的会话会中断数秒。继续吗？',
                 settings_restarting: '重启中…',
                 settings_restart_timeout: '重启超时，请稍后重试。',
-                settings_saved: '已保存。'
+                settings_saved: '已保存。',
+                setup_banner_title: '尚未完成设置',
+                setup_banner_body: '请前往「设置」页面新增至少一个日志来源。目前未配置任何来源，因此暂无数据可分析。',
+                setup_banner_btn: '前往设置',
+                setup_banner_dismiss: '稍后再说',
+                setup_banner_noaccount_title: '无账户模式',
+                setup_banner_noaccount_body: '尚未创建任何用户账户。任何能访问此页面的人都将作为管理员。请在「用户」页创建首个账户以启用登录。',
+                setup_banner_noaccount_btn: '创建首个账户',
+                user_anonymous: '匿名',
+                role_setup: '初始设置'
             },
             ja: {
                 filters_title: 'フィルター',
@@ -1267,7 +1308,16 @@
                 settings_restart_confirm: 'サーバーを再起動します。接続中のセッションは数秒切断されます。続行しますか？',
                 settings_restarting: '再起動中…',
                 settings_restart_timeout: '再起動がタイムアウトしました。後で再試行してください。',
-                settings_saved: '保存しました。'
+                settings_saved: '保存しました。',
+                setup_banner_title: 'セットアップが未完了',
+                setup_banner_body: 'ログソースがまだ設定されていません。「設定」タブから少なくとも一つ追加してください。',
+                setup_banner_btn: '設定を開く',
+                setup_banner_dismiss: '後で',
+                setup_banner_noaccount_title: 'アカウント未設定モード',
+                setup_banner_noaccount_body: 'ユーザーアカウントが未作成です。このページへアクセスできる全員が管理者として動作します。ログインを有効にするには「ユーザー」タブから最初のアカウントを作成してください。',
+                setup_banner_noaccount_btn: '最初のアカウントを作成',
+                user_anonymous: '匿名',
+                role_setup: '初期設定'
             }
         };
 
@@ -1546,6 +1596,11 @@
         }
 
         let currentUser = null;
+        // noAccountMode mirrors /api/auth/me's "no_account_mode" flag.
+        // When true the server lets anonymous callers act as admin so
+        // the operator can perform initial configuration before
+        // creating the first user account.
+        let noAccountMode = false;
 
         // authFetch is a thin wrapper around fetch() that:
         //  - always sends cookies (same-origin), so the session cookie travels
@@ -1561,8 +1616,10 @@
             }
             const res = await fetch(url, opts);
             if (res.status === 401) {
-                // Session lapsed / never existed: bounce to login.
-                showLogin();
+                // Session lapsed / never existed: bounce to login —
+                // unless the server is in no-account mode, in which
+                // case 401 is unexpected and we just surface it.
+                if (!noAccountMode) showLogin();
             }
             return res;
         }
@@ -1583,6 +1640,9 @@
             currentUser = u;
             const menu = document.getElementById('userMenu');
             menu.classList.remove('hidden');
+            // applyNoAccountMode may have hidden the per-button
+            // controls; restore them when a real session lands.
+            menu.querySelectorAll('button').forEach(function (b) { b.classList.remove('hidden'); });
             document.getElementById('userMenuName').textContent = u.username;
             document.getElementById('userMenuRole').textContent = u.role;
             if (u.role === 'admin') {
@@ -1594,19 +1654,109 @@
             }
         }
 
+        // applyNoAccountMode reveals all admin-only UI surfaces (Users,
+        // Settings, password/logout buttons hidden because there is no
+        // session to log out of) and surfaces the no-account-mode
+        // banner. Called instead of applyUserToHeader when /me reports
+        // no_account_mode=true.
+        function applyNoAccountMode() {
+            currentUser = null;
+            const menu = document.getElementById('userMenu');
+            menu.classList.remove('hidden');
+            document.getElementById('userMenuName').textContent = t('user_anonymous');
+            document.getElementById('userMenuRole').textContent = t('role_setup');
+            // Hide change-password / logout since there is no session.
+            const headerActions = menu.querySelectorAll('button');
+            headerActions.forEach(function (b) { b.classList.add('hidden'); });
+            document.getElementById('tabUsersHandle').classList.remove('hidden');
+            document.getElementById('tabSettingsHandle').classList.remove('hidden');
+        }
+
         async function checkSession() {
             try {
                 const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
                 if (!res.ok) { showLogin(); return false; }
                 const data = await res.json();
+                noAccountMode = !!data.no_account_mode;
+                if (noAccountMode) {
+                    applyNoAccountMode();
+                    hideLogin();
+                    // Surface the setup wizard / banner straight away.
+                    updateSetupBanner({ noAccount: true });
+                    return true;
+                }
                 if (!data.user) { showLogin(); return false; }
                 applyUserToHeader(data.user);
                 hideLogin();
+                // Refresh the "no sources configured" banner for admins.
+                if (data.user.role === 'admin') {
+                    updateSetupBanner({ noAccount: false });
+                }
                 return true;
             } catch (e) {
                 showLogin();
                 return false;
             }
+        }
+
+        // updateSetupBanner shows or hides the first-run banner above
+        // the header. opts.noAccount = true forces the "create first
+        // account" message; otherwise we probe /api/config to decide
+        // whether the runtime has any sources configured.
+        async function updateSetupBanner(opts) {
+            opts = opts || {};
+            const banner = document.getElementById('setupBanner');
+            const title = document.getElementById('setupBannerTitle');
+            const body = document.getElementById('setupBannerBody');
+            const btn = banner.querySelector('button.btn-primary');
+            const dismissed = sessionStorage.getItem('setupBannerDismissed') === '1';
+
+            if (opts.noAccount) {
+                title.textContent = t('setup_banner_noaccount_title');
+                body.textContent = t('setup_banner_noaccount_body');
+                btn.textContent = t('setup_banner_noaccount_btn');
+                btn.dataset.target = 'users';
+                banner.classList.remove('hidden');
+                return;
+            }
+            // For users without admin role we never show the banner.
+            if (!currentUser || currentUser.role !== 'admin') {
+                banner.classList.add('hidden');
+                return;
+            }
+            if (dismissed) {
+                banner.classList.add('hidden');
+                return;
+            }
+            try {
+                const res = await fetch('/api/config', { credentials: 'same-origin' });
+                if (!res.ok) { banner.classList.add('hidden'); return; }
+                const data = await res.json();
+                const sources = (data.runtime && data.runtime.sources) || [];
+                if (sources.length === 0) {
+                    title.textContent = t('setup_banner_title');
+                    body.textContent = t('setup_banner_body');
+                    btn.textContent = t('setup_banner_btn');
+                    btn.dataset.target = 'settings';
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                }
+            } catch (e) {
+                banner.classList.add('hidden');
+            }
+        }
+
+        function openSetup() {
+            const banner = document.getElementById('setupBanner');
+            const btn = banner.querySelector('button.btn-primary');
+            const target = btn.dataset.target || 'settings';
+            switchTab(target);
+        }
+
+        function dismissSetupBanner() {
+            sessionStorage.setItem('setupBannerDismissed', '1');
+            document.getElementById('setupBanner').classList.add('hidden');
         }
 
         async function doLogin(event) {
@@ -1710,6 +1860,16 @@
             document.getElementById('newUserName').value = '';
             document.getElementById('newUserPassword').value = '';
             loadUsers();
+            // If this was the first user we just exited no-account mode
+            // — re-run the auth probe so the UI starts requiring login
+            // for future requests instead of silently continuing as
+            // anonymous-admin.
+            if (noAccountMode) {
+                noAccountMode = false;
+                // Force a login screen so the new credentials are
+                // exercised; the just-created account has no session.
+                showLogin();
+            }
         }
 
         async function toggleUserDisabled(id, disabled) {
@@ -1923,6 +2083,9 @@
                 return;
             }
             stEl.textContent = t('settings_saved');
+            // After a save, the "no sources configured" banner may no
+            // longer apply — re-evaluate.
+            updateSetupBanner({ noAccount: noAccountMode });
         }
 
         async function confirmRestart() {

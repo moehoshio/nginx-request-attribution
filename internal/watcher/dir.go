@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -34,6 +35,11 @@ type DirWatcher struct {
 	keywords     []string
 	parser       parser.Parser
 	pollInterval time.Duration
+
+	// missingLogged guards the "root not available yet" log line so
+	// we only emit it once per missing-period (and once again when
+	// the root reappears).
+	missingLogged bool
 }
 
 // NewDirWatcher constructs a DirWatcher for src. src.Type must be
@@ -55,6 +61,11 @@ func NewDirWatcher(store *storage.Store, src runtimeconfig.Source, keywords []st
 // Watch runs the scan loop until ctx is cancelled. Errors from
 // individual files are logged and the scan continues; only ctx
 // cancellation stops the loop.
+//
+// If the configured root directory does not exist yet (or is
+// unreadable) we treat the source as "pending configuration": the
+// condition is logged once and the loop keeps polling silently until
+// the directory appears.
 func (dw *DirWatcher) Watch(ctx context.Context) error {
 	// Run an initial scan immediately so newly-configured sources
 	// don't have to wait a full poll interval to come online.
@@ -75,6 +86,26 @@ func (dw *DirWatcher) Watch(ctx context.Context) error {
 func (dw *DirWatcher) scan(ctx context.Context) {
 	root := dw.src.Path
 	pattern := dw.src.Pattern
+
+	// Pre-check: if the root is missing or unreadable, stay quiet
+	// (log once via the manager-level state) instead of logging once
+	// per poll. We test the root with a stat so we can short-circuit
+	// before WalkDir produces noisy per-entry errors.
+	if _, err := os.Stat(root); err != nil {
+		if errors.Is(err, os.ErrNotExist) || errors.Is(err, os.ErrPermission) {
+			if !dw.missingLogged {
+				log.Printf("dir watcher %q: root %s not available yet (%v); will keep polling quietly.", dw.src.Name, root, err)
+				dw.missingLogged = true
+			}
+			return
+		}
+		log.Printf("dir watcher %q: stat root %s: %v", dw.src.Name, root, err)
+		return
+	}
+	if dw.missingLogged {
+		log.Printf("dir watcher %q: root %s is now available; resuming scans.", dw.src.Name, root)
+		dw.missingLogged = false
+	}
 	walkFn := func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			// Surface but continue; missing subdirs are normal during

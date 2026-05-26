@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/moehoshio/web-request-attribution/internal/parser"
 	"github.com/moehoshio/web-request-attribution/internal/runtimeconfig"
@@ -102,33 +103,40 @@ type BootstrapAdmin struct {
 	Password string `json:"password"`
 }
 
-// DefaultConfig returns a Config populated with sensible defaults and a single
-// Nginx file source.
+// DefaultConfig returns a Config populated with sensible defaults.
+//
+// Sources is intentionally empty and Watch is false: a fresh install
+// has nothing to monitor until the operator adds a source via the
+// settings panel. This avoids spamming "file not found" errors when
+// the binary is launched on a host that doesn't actually have the
+// expected nginx layout.
 func DefaultConfig() *Config {
 	return &Config{
 		ListenAddr: ":8080",
 		DBPath:     "./data/stats.db",
-		Watch:      true,
+		Watch:      false,
 		Keywords:   []string{},
-		Sources: []Source{{
-			Name: "nginx",
-			Type: SourceFile,
-			Path: "/var/log/nginx/access.log",
-			Format: parser.FormatConfig{
-				Engine: "nginx",
-				Preset: "combined",
-			},
-		}},
+		Sources:    []Source{},
 	}
 }
 
-// Load reads configuration from disk. A missing file is treated as a request
-// for defaults.
+// Load reads configuration from disk. A missing file is treated as a
+// request for defaults; the defaults are then written back to `path`
+// so the operator has a starting point to edit.
+//
+// If writing the auto-generated file fails (e.g. read-only filesystem)
+// the in-memory defaults are still returned; the auto-generation is a
+// best-effort convenience, not a hard requirement.
 func Load(path string) (*Config, error) {
 	cfg := DefaultConfig()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			// Best-effort: drop a starter file next to the binary so
+			// users have something to edit. Errors are logged via the
+			// returned cfg's saved-path field is unnecessary; failure
+			// to write just means we run with in-memory defaults.
+			_ = cfg.Save(path)
 			return cfg, nil
 		}
 		return nil, err
@@ -179,11 +187,17 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// Save writes the configuration to disk as indented JSON.
+// Save writes the configuration to disk as indented JSON. Any missing
+// parent directories are created with 0755 permissions.
 func (c *Config) Save(path string) error {
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
+	}
+	if dir := filepath.Dir(path); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
 	}
 	return os.WriteFile(path, data, 0644)
 }

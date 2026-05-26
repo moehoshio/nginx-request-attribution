@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -46,6 +47,12 @@ func NewFileWatcher(store *storage.Store, logPath string, keywords []string, p p
 
 // Watch starts watching the log file for new entries using fsnotify.
 // It handles log rotation by detecting file truncation or recreation.
+//
+// If the configured log file does not exist (or is unreadable) we treat
+// the source as "pending configuration": the missing-file condition is
+// logged once and then polled silently every 30 seconds. This keeps a
+// fresh install from spamming the console with retry messages when no
+// real source has been configured yet.
 func (fw *FileWatcher) Watch(ctx context.Context) error {
 	// Import any rotated `.gz` archives first if requested.
 	if fw.readCompressed {
@@ -54,6 +61,7 @@ func (fw *FileWatcher) Watch(ctx context.Context) error {
 		}
 	}
 
+	missingLogged := false
 	for {
 		select {
 		case <-ctx.Done():
@@ -61,15 +69,43 @@ func (fw *FileWatcher) Watch(ctx context.Context) error {
 		default:
 		}
 
-		if err := fw.watchLoop(ctx); err != nil {
-			log.Printf("File watcher error: %v, retrying in 5s...", err)
+		err := fw.watchLoop(ctx)
+		if err == nil {
+			// Clean exit (context cancelled).
+			return nil
+		}
+
+		// Distinguish "log file does not exist / is unreadable" from
+		// genuine errors. The former is the common "no source
+		// configured yet" case and shouldn't spam the log.
+		quiet := isMissingOrUnreadable(err)
+		if quiet {
+			if !missingLogged {
+				log.Printf("File watcher %q: target not available yet (%v); will poll every 30s.", fw.logPath, err)
+				missingLogged = true
+			}
 			select {
 			case <-ctx.Done():
 				return nil
-			case <-time.After(5 * time.Second):
+			case <-time.After(30 * time.Second):
 			}
+			continue
+		}
+
+		log.Printf("File watcher error: %v, retrying in 5s...", err)
+		missingLogged = false
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(5 * time.Second):
 		}
 	}
+}
+
+// isMissingOrUnreadable returns true for "file not found" / permission
+// errors. We treat those as quiet pending-configuration states.
+func isMissingOrUnreadable(err error) bool {
+	return errors.Is(err, os.ErrNotExist) || errors.Is(err, os.ErrPermission)
 }
 
 // importCompressedSiblings reads `.gz` files in the same directory whose name

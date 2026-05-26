@@ -61,8 +61,18 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 // RequireAuth ensures a valid session is present on the request and
 // stashes the user on the context. It also enforces CSRF on unsafe
 // methods using the double-submit cookie pattern.
+//
+// No-account mode: if zero users exist in the database, every request
+// is allowed through with no user attached. This lets a freshly
+// installed instance be configured from the UI before any account is
+// created. The mode automatically disappears as soon as the first
+// user is created.
 func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if h.noAccountMode() {
+			next(w, r)
+			return
+		}
 		u := h.lookupUser(r)
 		if u == nil {
 			writeError(w, http.StatusUnauthorized, "authentication required")
@@ -79,9 +89,15 @@ func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// RequireAdmin is RequireAuth plus a role check.
+// RequireAdmin is RequireAuth plus a role check. In no-account mode
+// the admin check is also bypassed: anonymous callers are effectively
+// implicit administrators until the first real account is created.
 func (h *Handler) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return h.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		if h.noAccountMode() {
+			next(w, r)
+			return
+		}
 		u := UserFromContext(r.Context())
 		if u == nil || u.Role != RoleAdmin {
 			writeError(w, http.StatusForbidden, "admin role required")
@@ -89,6 +105,17 @@ func (h *Handler) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	})
+}
+
+// noAccountMode reports whether the auth system currently has zero
+// users. Errors from the database are treated as "users exist" (fail
+// closed) so a transient DB problem doesn't silently disable auth.
+func (h *Handler) noAccountMode() bool {
+	n, err := h.svc.CountUsers()
+	if err != nil {
+		return false
+	}
+	return n == 0
 }
 
 // lookupUser tries to resolve the session cookie to a user. Returns nil
@@ -201,7 +228,10 @@ func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u := UserFromContext(r.Context())
-	writeJSON(w, http.StatusOK, map[string]interface{}{"user": u})
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"user":            u,
+		"no_account_mode": h.noAccountMode(),
+	})
 }
 
 // handleCSRF issues (or refreshes) a CSRF cookie. Useful so the JS

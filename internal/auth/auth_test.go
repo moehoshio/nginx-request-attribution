@@ -253,6 +253,11 @@ func TestLoginIssuesCookies(t *testing.T) {
 
 func TestRequireAuthBlocksAnonymous(t *testing.T) {
 	svc := newTestService(t)
+	// Create a user so we exit "no-account mode"; RequireAuth must
+	// block unauthenticated callers once at least one account exists.
+	if _, err := svc.CreateUser("admin", "passpasspass", RoleAdmin); err != nil {
+		t.Fatal(err)
+	}
 	h := NewHandler(svc)
 	called := false
 	protected := h.RequireAuth(func(w http.ResponseWriter, r *http.Request) { called = true })
@@ -265,6 +270,53 @@ func TestRequireAuthBlocksAnonymous(t *testing.T) {
 	}
 	if called {
 		t.Errorf("handler should not be called for anonymous request")
+	}
+}
+
+// TestRequireAuthAllowsAnonymousInNoAccountMode covers the bootstrap
+// state: with zero users in the DB, RequireAuth (and RequireAdmin) let
+// every request through so the operator can configure the instance
+// from the UI before creating an account.
+func TestRequireAuthAllowsAnonymousInNoAccountMode(t *testing.T) {
+	svc := newTestService(t)
+	h := NewHandler(svc)
+	called := false
+	protected := h.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/stats", nil)
+	rr := httptest.NewRecorder()
+	protected(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("no-account-mode RequireAuth status = %d, want 200", rr.Code)
+	}
+	if !called {
+		t.Errorf("inner handler should run in no-account mode")
+	}
+
+	adminCalled := false
+	admin := h.RequireAdmin(func(w http.ResponseWriter, r *http.Request) {
+		adminCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+	rr2 := httptest.NewRecorder()
+	admin(rr2, httptest.NewRequest(http.MethodGet, "/api/users", nil))
+	if rr2.Code != http.StatusOK {
+		t.Errorf("no-account-mode RequireAdmin status = %d, want 200", rr2.Code)
+	}
+	if !adminCalled {
+		t.Errorf("inner admin handler should run in no-account mode")
+	}
+
+	// Once a user exists, anonymous access is blocked again.
+	if _, err := svc.CreateUser("admin", "passpasspass", RoleAdmin); err != nil {
+		t.Fatal(err)
+	}
+	rr3 := httptest.NewRecorder()
+	protected(rr3, httptest.NewRequest(http.MethodGet, "/api/stats", nil))
+	if rr3.Code != http.StatusUnauthorized {
+		t.Errorf("after first user, status = %d, want 401", rr3.Code)
 	}
 }
 
